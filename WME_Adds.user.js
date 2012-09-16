@@ -33,6 +33,8 @@ if ('undefined' == typeof __WME_ADD_SCOPE_RUN__) {
     return;
 }
 
+var WME_ADD_UNKNOWN = -987;
+
 ////  UTIL FUNCTIONS
 function extend(target, source) {
     var hasOwnProperty = Object.prototype.hasOwnProperty;
@@ -384,6 +386,9 @@ highlightCity.getModifiedAttrs = function(wazeLineSegment) {
     if (currentCity == wazeLineSegment.cityID) {
         modifications.color = "#0f0";
         modifications.opacity = 0.5;
+    } else if (currentCity == WME_ADD_UNKNOWN && wazeLineSegment.noCity){
+        modifications.color = "#0f0";
+        modifications.opacity = 0.5;
     }
     return modifications;
 };
@@ -435,7 +440,7 @@ highlightNull.getModifiedAttrs = function(wazeLineSegment) {
 };
 
 /**  The list of all modifiers **/
-var segmentModifiers = [highlightOneWay, highlightNoDirection, highlightNoTerm, highlightToll, highlightLocked, highlightNoName, highlightNoCity, speedColor];
+var segmentModifiers = [highlightOneWay, highlightNoDirection, highlightNoTerm, highlightToll, highlightLocked, highlightNoName, speedColor];
 var advancedModifiers = [highlightEditor, highlightRecent, highlightShortSegments, highlightRoadType, highlightCity];
 var allModifiers = [segmentModifiers, advancedModifiers]
 
@@ -447,7 +452,6 @@ function highlightSegments() {
             var segMod = segModGroup[j];
             if (getId(segMod.getCheckboxId()).checked) {
                 modifySegements(segMod);
-//                return true;
             }
         }
     }
@@ -555,6 +559,7 @@ function populateOption(selectId, optionsMap) {
 // populate drop-down list of Cities
 function populateCityList() {
     var cityIds = new Object();
+    cityIds[WME_ADD_UNKNOWN] = "No City";
     for (var cit in wazeModel.cities.objects) {
         var city = wazeModel.cities.get(cit);
         if (cityIds[city.id] == null && city.name != null && city.name.length > 0) {
