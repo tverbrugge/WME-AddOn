@@ -32,15 +32,92 @@ if ('undefined' == typeof __WME_ADD_SCOPE_RUN__) {
     // an anonymous wrapper.
     return;
 }
-//  
-// CLASS DEFINITIONS FILE  
-//  
+  
+// CORE FILE  
+
 var WME_ADD_UNKNOWN = -987;
 
-function SelectSection(hdr, slctns) {
-this.header = hdr;
-this.selections = slctns;
+////  UTIL FUNCTIONS
+function extend(target, source) {
+    var hasOwnProperty = Object.prototype.hasOwnProperty;
+    for (var propName in source) {
+        // Invoke hasOwnProperty() with this = source
+        if (hasOwnProperty.call(source, propName)) {
+            target[propName] = source[propName];
+        }
+    }
+    return target;
 }
+
+function getScaledHex(index, maximum, startColor, endColor) {
+    if (index >= maximum) {
+        index = maximum - 1;
+    }
+    var colorVal = startColor + ((endColor - startColor) * (index / (maximum - 1)));
+
+    colorVal = Math.round(colorVal);
+
+    // convert from decimal to hexadecimal
+    var colorHex = colorVal.toString(16);
+
+    // pad the hexadecimal number if required
+    if (colorHex.length < 2) {
+        colorHex = "0" + colorHex;
+    }
+    return colorHex;
+}
+
+function getScaledColour(index, maximum) {
+    var blueHex = "00";
+
+    var startGreen = 0;
+    var endGreen = 255;
+
+    var startRed = 255;
+    var endRed = 0;
+
+    return "#" + getScaledHex(index, maximum, startRed, endRed) + getScaledHex(index, maximum, startGreen, endGreen) + blueHex;
+}
+
+function generateTopDownGradient(top, bottom) {
+    var stylizer = "background-color: " + top + ";"
+    stylizer += "background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0%," + top + "), color-stop(100%, " + bottom + "));";
+    stylizer += "background-image: -webkit-linear-gradient(top, " + top + ", " + bottom + ");";
+    stylizer += "background-image: -moz-linear-gradient(top, " + top + ", "  + bottom + ");";
+    stylizer += "background-image: -ms-linear-gradient(top, " + top + ", " + bottom + ");";
+    stylizer += "background-image: -o-linear-gradient(top, " + top + ", " + bottom + ");";
+    stylizer += "background-image: linear-gradient(top, " + top + ", " + bottom + ");";
+    return stylizer;
+}
+var possibleWazeMapEvents = ["mouseout"];
+var possibleControllerEvents = ["loadend"];
+var possiblePendingControllerEvents = [];
+var possibleSelectionModifyEvents = ["deactivate", "featuredeselected"];
+var possibleSelectionEvents = ["selectionchanged"];
+var possibleSelectionModifyHoverEvents = [];
+var possibleActionEvents = [];
+
+var RoadTypeString = {
+ 1: "Streets",
+ 2: "Primary Street",
+ 3: "Freeways",
+ 4: "Ramps",
+ 5: "Walking Trails",
+ 6: "Major Highway",
+ 7: "Minor Highway",
+ 8: "Dirt roads",
+ 10: "Pedestrian Bw",
+ 16: "Stairway",
+ 17: "Private Road",
+ 18: "Railroad",
+ 19: "Runway/Taxiway",
+ 20: "Parking Lot Road",
+ 21: "Service Road"};
+
+function calcTan(dLon, dLat) {
+ return (Math.atan(dLon/dLat) / (2 * Math.PI)) * 360;
+}
+
 
 // CLASS DEFINITIONS
 function LineBearing(dist, bear) {
@@ -48,14 +125,14 @@ function LineBearing(dist, bear) {
   this.bearing = bear;
 }
 function getDistance(p1, p2) {
-    var y1 = p1.y;
-    var x1 = p1.x;
+    var lat1 = p1.y;
+    var lon1 = p1.x;
 
-    var y2 = p2.y;
-    var x2 = p2.x;
+    var lat2 = p2.y;
+    var lon2 = p2.x;
 
-    var dLat = y2-y1;
-    var dLon = x2-x1;
+    var dLat = lat2-lat1;
+    var dLon = lon2-lon1;
     d = Math.sqrt(Math.pow(dLat, 2) + Math.pow(dLon, 2));
 
     // http://mathforum.org/library/drmath/view/55417.html    
@@ -79,27 +156,10 @@ function getDistance(p1, p2) {
     bearing %= 360;
     return new LineBearing(d, bearing);
 }
-
-function getComponentsProperties(comps) {
-     var compSegs = [];
-    for(var i = 1; i < comps.length; i++) {
-        var p1 = compToPoint(comps[i - 1]);
-        var p2 = compToPoint(comps[i]);
-        var dist = getDistance(p1, p2);
-        compSegs.push(dist);
-    }
-    return compSegs;
-}
-
 function Point(x, y) {
   this.x = x;
   this.y = y;
 }
-
-function compToPoint(comp) {
-    return new Point(comp.x, comp.y);
-}
-
 Point.prototype.getLineTo = function(p2) {
     var lat1 = this.latitude;
     var lon1 = this.longitude;
@@ -126,7 +186,6 @@ function WazeLineSegment(segment, street, city) {
     this.attributes = segment.attributes;
     this.sid = this.primaryStreetID;
     this.line = getId(segment.geometry.id);
-    this.streetName = street.name;
     this.noName = street.isEmpty;
     this.cityID = street.cityID;
     this.noCity = city.isEmpty;
@@ -187,89 +246,8 @@ WMEFunctionExtended.prototype.getSelectFieldChangeFunction = function() {
         highlightSegments();
     };    
 };
-//  
-// UTILITY DEFINITIONS FILE  
-//  
 
-////  UTIL FUNCTIONS
-function extend(target, source) {
-    var hasOwnProperty = Object.prototype.hasOwnProperty;
-    for (var propName in source) {
-        // Invoke hasOwnProperty() with this = source
-        if (hasOwnProperty.call(source, propName)) {
-            target[propName] = source[propName];
-        }
-    }
-    return target;
-}
-
-function getScaledHex(index, maximum, startColor, endColor) {
-    if (index >= maximum) {
-        index = maximum - 1;
-    }
-    var colorVal = startColor + ((endColor - startColor) * (index / (maximum - 1)));
-
-    colorVal = Math.round(colorVal);
-
-    // convert from decimal to hexadecimal
-    var colorHex = colorVal.toString(16);
-
-    // pad the hexadecimal number if required
-    if (colorHex.length < 2) {
-        colorHex = "0" + colorHex;
-    }
-    return colorHex;
-}
-
-function getScaledColour(index, maximum) {
-    var blueHex = "00";
-
-    var startGreen = 0;
-    var endGreen = 255;
-
-    var startRed = 255;
-    var endRed = 0;
-
-    return "#" + getScaledHex(index, maximum, startRed, endRed) + getScaledHex(index, maximum, startGreen, endGreen) + blueHex;
-}
-
-function generateTopDownGradient(top, bottom) {
-    var stylizer = "background-color: " + top + ";"
-    stylizer += "background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0%," + top + "), color-stop(100%, " + bottom + "));";
-    stylizer += "background-image: -webkit-linear-gradient(top, " + top + ", " + bottom + ");";
-    stylizer += "background-image: -moz-linear-gradient(top, " + top + ", "  + bottom + ");";
-    stylizer += "background-image: -ms-linear-gradient(top, " + top + ", " + bottom + ");";
-    stylizer += "background-image: -o-linear-gradient(top, " + top + ", " + bottom + ");";
-    stylizer += "background-image: linear-gradient(top, " + top + ", " + bottom + ");";
-    return stylizer;
-}
-
-
-function calcTan(dLon, dLat) {
- return (Math.atan(dLon/dLat) / (2 * Math.PI)) * 360;
-}
-//  
-// USER SELECTIONS DEFINITIONS FILE  
-//  
-
-var RoadTypeString = {
- 1: "Streets",
- 2: "Primary Street",
- 3: "Freeways",
- 4: "Ramps",
- 5: "Walking Trails",
- 6: "Major Highway",
- 7: "Minor Highway",
- 8: "Dirt roads",
- 10: "Pedestrian Bw",
- 16: "Stairway",
- 17: "Private Road",
- 18: "Railroad",
- 19: "Runway/Taxiway",
- 20: "Parking Lot Road",
- 21: "Service Road"};
-
- var speedColor = new WMEFunction("_cbHighlightSpeed", "Speed");
+var speedColor = new WMEFunction("_cbHighlightSpeed", "Speed");
 var MAX_THRESHOLD_SPEED = 100;
 var MIN_WIDTH_SPEED = 4;
 var MAX_WIDTH_SPEED = 10;
@@ -310,7 +288,7 @@ highlightNoCity.getModifiedAttrs = function(wazeLineSegment) {
 highlightNoCity.getBackground = function() {
   return 'rgba(255,255,0,0.3)';
 };
-var highlightNoName = new WMEFunction("_cbHighlightUnnamed", "Unnamed Street");
+var highlightNoName = new WMEFunction("_cbHighlightUnnamed", "No Name");
 highlightNoName.getModifiedAttrs = function(wazeLineSegment) {
     var modifications = new Object();
     if (wazeLineSegment.noName) {
@@ -384,44 +362,29 @@ highlightNoTerm.getBackground = function() {
   return 'rgba(187,238,0,0.5)';
 };
 
-
-/** GEOMETRY **/
-
-var MIN_DISTANCE_BETWEEN_COMPONENTS=5;
-var MIN_LENGTH_DIFF=0.05;
-
-var highlightWeirdComponents = new WMEFunction("_cbHighlightExcessComponents", "Excess Components?");
-highlightWeirdComponents.getModifiedAttrs = function(wazeLineSegment) {
-    var components = wazeLineSegment.geometry.components;
-    var foundIssue = false;
-    var lengthSum = 0;
-    var segmentProperties = getComponentsProperties(wazeLineSegment.geometry.components);
-    for(var i = 0; i < segmentProperties.length; i++) {
-        var componentLength = segmentProperties[i].distance;
-        if(componentLength < MIN_DISTANCE_BETWEEN_COMPONENTS) {
-            foundIssue = true;
-        }
-        lengthSum += componentLength;
-    }
-    var pStart = compToPoint(components[0]);
-    var pEnd = compToPoint(components[components.length - 1]);
-    var totalDist = getDistance(pStart, pEnd).distance;
-//    console.log(""+ lengthSum + " and " + totalDist);
-    var lengthDiff = lengthSum - totalDist;
-    
-    
-    // if there is more than just a beginning and end component, and the difference from the total length is really small, this fits this category.
-    if(components.length > 2 && lengthDiff < MIN_LENGTH_DIFF) {
-        foundIssue = true;
-    }
+var highlightWeirdDistance = new WMEFunction("_cbHighlightWeirdLength", "Odd Length");
+highlightWeirdDistance.getModifiedAttrs = function(wazeLineSegment) {
     var modifications = new Object();
-    if(foundIssue) {
+    var components = wazeLineSegment.geometry.components;
+    var lengthSum = 0;
+    for(var i = 1; i < components.length; i++) {
+        var p1 = new Point(components[i - 1].x, components[i - 1].y);
+        var p2 = new Point(components[i].x, components[i].y);
+        var dist = getDistance(p1, p2);
+        lengthSum += dist.distance;
+    }
+    var pStart = new Point(components[0].x, components[0].y);
+    var pEnd = new Point(components[components.length - 1].x, components[components.length - 1].y);
+    var totalDist = getDistance(pStart, pEnd).distance;
+    console.log(""+ lengthSum + " and " + totalDist);
+    var lengthDiff = lengthSum - totalDist;
+    if(lengthDiff < 0.5 && components.length > 2) {
         modifications.color = "#BE0";
         modifications.opacity = 0.5;
     }
     return modifications;
 };
-highlightWeirdComponents.getBackground = function() {
+highlightWeirdDistance.getBackground = function() {
   return 'rgba(187,238,0,0.5)';
 };
 
@@ -573,40 +536,20 @@ highlightNull.getModifiedAttrs = function(wazeLineSegment) {
     return modifications;
 };
 
-
-var geometrySection = new SelectSection("Geometry", [highlightWeirdComponents, highlightNoTerm, highlightShortSegments]);
-var highlightSection = new SelectSection("Highlight Segments", [highlightOneWay, highlightNoDirection, highlightToll, highlightLocked, highlightNoName, highlightCity, speedColor, highlightRoadType]);
-var advancedSection = new SelectSection("Advanced", [highlightEditor, highlightRecent]);
-
-var selectSections = [highlightSection,geometrySection, advancedSection];
-
-var allModifiers = [];
-/**  The list of all modifiers to display **/
-for(var i = 0; i < selectSections.length; i++) {
-allModifiers = allModifiers.concat(selectSections[i].selections);
-}
-// var allModifiers = [geometrySection.selections, highlightSection.selections, advancedSection.selections];
-//  
-// CORE FILE  
-//  
-
-var DEBUG = false;
-
-var possibleWazeMapEvents = ["mouseout"];
-var possibleControllerEvents = ["loadend"];
-var possiblePendingControllerEvents = [];
-var possibleSelectionModifyEvents = ["deactivate", "featuredeselected"];
-var possibleSelectionEvents = ["selectionchanged"];
-var possibleSelectionModifyHoverEvents = [];
-var possibleActionEvents = [];
-
+/**  The list of all modifiers **/
+var segmentModifiers = [highlightOneWay, highlightNoDirection, highlightNoTerm, highlightToll, highlightLocked, highlightNoName, speedColor, highlightWeirdDistance];
+var advancedModifiers = [highlightEditor, highlightRecent, highlightShortSegments, highlightRoadType, highlightCity];
+var allModifiers = [segmentModifiers, advancedModifiers]
 
 function highlightSegments() {
     modifySegements(highlightNull);
     for (var i = 0; i < allModifiers.length; i++) {
         var segModGroup = allModifiers[i];
-        if (getId(segModGroup.getCheckboxId()).checked) {
-            modifySegements(segModGroup);
+        for (var j = 0; j < segModGroup.length; j++) {
+            var segMod = segModGroup[j];
+            if (getId(segMod.getCheckboxId()).checked) {
+                modifySegements(segMod);
+            }
         }
     }
     return true;
@@ -615,7 +558,10 @@ function highlightSegments() {
 function enumerateAllModifiers(work) {
     for (var i = 0; i < allModifiers.length; i++) {
         var segModGroup = allModifiers[i];
-        work(segModGroup);
+        for (var j = 0; j < segModGroup.length; j++) {
+            var segMod = segModGroup[j];
+            work(segMod);
+        }
     }
 }
 
@@ -743,7 +689,7 @@ function getId(node) {
     return document.getElementById(node);
 }
 
-function createSectionOld(sectionName, modifiers) {
+function createSection(sectionName, modifiers) {
     // advanced options
     var section = document.createElement('div');
     section.style.paddingTop = "8px";
@@ -752,41 +698,6 @@ function createSectionOld(sectionName, modifiers) {
     aheader.innerHTML = '<b>' + sectionName + '</b>';
     section.appendChild(aheader);
 
-    // section.innerHTML = '<h4><b>Advanced Options</b></h4>';
-    for (var i = 0; i < modifiers.length; i++) {
-        var segMod = modifiers[i];
-        var segmentContainer = document.createElement('div');
-        
-        var segmentColor = document.createElement('div');
-        segmentColor.innerHTML="▶";
-        segmentColor.style.color = segMod.getBackground();
-        segmentColor.style.textShadow = "1px 1px 2px #333";
-        segmentColor.style.cssFloat = "left";
-        segmentColor.style.height = "100%";
-        segmentColor.style.lineHeight = "100%";
-        
-        var segmentBuild = document.createElement('div');
-        segmentBuild.innerHTML = segMod.build();
-        segmentBuild.style.paddingLeft = "1.5em";
-        
-        segmentContainer.appendChild(segmentColor);
-        segmentContainer.appendChild(segmentBuild);
-        //    segmentContainer.style.background = segMod.getBackground();
-        section.appendChild(segmentContainer);
-    }
-    return section;
-}
-
-function createSection(sectionItem) {
-    // advanced options
-    var section = document.createElement('div');
-    section.style.paddingTop = "8px";
-    section.id = 'WMEAdd_advancedOptions';
-    var aheader = document.createElement('h4');
-    aheader.innerHTML = '<b>' + sectionItem.header + '</b>';
-    section.appendChild(aheader);
-
-    var modifiers = sectionItem.selections;
     // section.innerHTML = '<h4><b>Advanced Options</b></h4>';
     for (var i = 0; i < modifiers.length; i++) {
         var segMod = modifiers[i];
@@ -829,7 +740,7 @@ var clickBar = document.createElement('a');
 clickBar.id = "WME_ADD_addOnToggle"
 clickBar.innerHTML = 'Show / Hide';
 // clickBar.style.background = '#ccc';
-clickBar.style.textAlign = 'center';
+// clickBar.style.textAlign = 'center';
 // clickBar.style.margin = '0 auto';
 // clickBar.style.width = '100%';
 // clickBar.style.cursor = 'pointer';
@@ -845,17 +756,8 @@ addon.id = "highlight-addon";
 
 addon.innerHTML = '<b>WME Add</b> ' + version;
 
-//addon.appendChild(createSection("Highlight Segments", segmentModifiers));
-//addon.appendChild(createSection("Extended Options", advancedModifiers));
-
-for(var i = 0; i < selectSections.length; i++) {
-    addon.appendChild(createSection(selectSections[i]));
-}
-
-// addon.appendChild(createSection(geometrySection));
-// addon.appendChild(createSection(highlightSection));
-// addon.appendChild(createSection(advancedSection));
-
+addon.appendChild(createSection("Highlight Segments", segmentModifiers));
+addon.appendChild(createSection("Extended Options", advancedModifiers));
 
 var section = document.createElement('div');
 section.innerHTML = '<button type="button" id="_cbRefreshButton">Refresh</button> ';
@@ -889,6 +791,7 @@ stylizer.innerHTML += "    color: #333;"
 stylizer.innerHTML += "    font: bold 11px 'Lucida Grande', 'Lucida Sans Unicode', 'Lucida Sans', Geneva, Verdana, sans-serif;"
 stylizer.innerHTML += "    line-height: 1;"
 stylizer.innerHTML += "    padding: 0.1em 0.2em;"
+stylizer.innerHTML += "    text-align: center;"
 stylizer.innerHTML += "    text-shadow: 0 1px 0 #eee;"
 stylizer.innerHTML += "    width: 120px; }"
 stylizer.innerHTML += "   #WME_ADD_addOnToggle:hover{ "
@@ -905,16 +808,6 @@ stylizer.innerHTML += "    -moz-box-shadow: inset 0 0 5px 2px #aaaaaa, 0 1px 0 0
 stylizer.innerHTML += "    box-shadow: inset 0 0 5px 2px #aaaaaa, 0 1px 0 0 #eeeeee; }"
 getId('editor-container').appendChild(stylizer);
 getId('editor-container').appendChild(addonContainer);
-
-if(DEBUG) {
-    var WME_ADD_Popup = document.createElement('div');
-    WME_ADD_Popup.id = 'WME_ADD_Popup';
-    WME_ADD_Popup.style.background = "#fff"
-    WME_ADD_Popup.style.position = "absolute";
-    WME_ADD_Popup.style.bottom = "48px";
-    WME_ADD_Popup.style.right = "24px";
-    getId('editor-container').appendChild(WME_ADD_Popup);
-}
 
 // check for AM or CM, and unhide Advanced options
 var advancedMode = false;
@@ -957,31 +850,11 @@ function analyzeNodes() {
     }
 }
 
-function showPopup() {
-    if(selectionManager.selectedItems.length > 0) {
-        console.log(selectionManager.selectedItems[0].geometry.components.length);
-        var cmpnnts = selectionManager.selectedItems[0].geometry.components;
-        var compSegs = getComponentsProperties(cmpnnts);
-        var sum = 0;
-        var userString = "";
-        for(var i = 0; i < compSegs.length; i++) {
-            var compSeg = compSegs[i];
-            sum += compSeg.distance;
-            userString += "dist: " + compSeg.distance + ";";
-        }
-        WME_ADD_Popup.innerHTML = userString;
-    }
-    else {
-        WME_ADD_Popup.innerHTML = "";
-    }
-}
-
 function createEventAction(eventHolderName, actionName) {
     return function() {
         highlightSegments();
         populateUserList();
         populateCityList();
-        // showPopup();
         return true;
     };
 }
