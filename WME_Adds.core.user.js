@@ -1,7 +1,7 @@
 
 var DEBUG = false;
 
-var possibleWazeMapEvents = ["mouseout"];
+var possibleWazeMapEvents = ["mouseout", "zoomend"];
 var possibleControllerEvents = ["loadend"];
 var possiblePendingControllerEvents = [];
 var possibleSelectionModifyEvents = ["deactivate", "featuredeselected"];

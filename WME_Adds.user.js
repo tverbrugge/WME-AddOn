@@ -249,6 +249,123 @@ function calcTan(dLon, dLat) {
  return (Math.atan(dLon/dLat) / (2 * Math.PI)) * 360;
 }
 //  
+// COMPONENT SELECTION CLASS  
+//  
+
+/** GEOMETRY **/
+
+
+function getBearingDiff(bearing1, bearing2) {
+    // normalize the first angle to 0, and subtract the same from the second;
+    var normalizeAngle = bearing1;
+    bearing1 -= normalizeAngle;
+    var diffAngle = bearing2 - normalizeAngle;
+    
+    
+    if(diffAngle < -180) {
+        diffAngle += 360;
+    } 
+    else if (diffAngle > 180) {
+        diffAngle -= 360;
+    }
+    return diffAngle;
+}
+
+function rightTurn(bearing1, bearing2) {
+    return getBearingDiff(bearing1, bearing2) > 0;
+}
+
+var MIN_DISTANCE_BETWEEN_COMPONENTS=5;
+var MIN_LENGTH_DIFF=0.05;
+
+
+function subtleZigZags(segmentProperties) {
+    // detect zig zagging... 
+    var segmentChain = [];
+    for(var i = 0; i < segmentProperties.length; i++) {
+        var currentSegment = segmentProperties[i];
+        segmentChain.push(currentSegment);
+        if(segmentChain.length < 3) {
+            continue;
+        }
+        if(currentSegment.distance > 10) {
+            segmentChain = [];
+            continue;
+        }
+        var origSegment = segmentChain[segmentChain.length - 3];
+        var pastSegment = segmentChain[segmentChain.length - 2];
+        var bearing1 = origSegment.bearing;
+        var bearing2 = pastSegment.bearing;
+        var bearing3 = currentSegment.bearing;
+        var isRightTurn1 = rightTurn(bearing1, bearing2);
+        var isRightTurn2 = rightTurn(bearing2, bearing3);
+        
+        var bearDiff1 = getBearingDiff(bearing1, bearing2);
+        var bearDiff2 = getBearingDiff(bearing2, bearing3);
+        
+        if((bearDiff1 < 0 && bearDiff2 > 0) || (bearDiff1 > 0 && bearDiff2 < 0)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Check for subtle zig-zags on longer components where the end result of the zig-zag is almost nothing
+
+// Check for sharp zig-zags on very short components where the end result of the zig-zag is almost nothing
+
+// OR
+
+// Check for issues when (angle / length) reaches a threshold.  So sharp angles reach the threshold with small lengths;
+
+//
+
+// // // 
+
+// On major streets, checks to see that there aren't places where the street can't continue due to turn restrictions.
+
+var highlightWeirdComponents = new WMEFunction("_cbHighlightExcessComponents", "Unusual Geometry");
+highlightWeirdComponents.getModifiedAttrs = function(wazeLineSegment) {
+    var components = wazeLineSegment.geometry.components;
+    var foundIssue = false;
+    var lengthSum = 0;
+    var segmentProperties = getComponentsProperties(wazeLineSegment.geometry.components);
+    var issueColor = "#BE0";
+    
+    // If the space between components is really small, we note that as an issue
+    for(var i = 0; i < segmentProperties.length; i++) {
+        var componentLength = segmentProperties[i].distance;
+        if(componentLength < MIN_DISTANCE_BETWEEN_COMPONENTS) {
+            foundIssue = true;
+        }
+        lengthSum += componentLength;
+    }
+    
+    if(subtleZigZags(segmentProperties)) {
+        issueColor = "#a00";
+        foundIssue = true;
+    }
+    
+    // if there is more than just a beginning and end component, and the difference from the total length is really small, this fits this category.
+    var pStart = compToPoint(components[0]);
+    var pEnd = compToPoint(components[components.length - 1]);
+    var totalDist = getDistance(pStart, pEnd).distance;
+    var lengthDiff = lengthSum - totalDist;
+    if(components.length > 2 && lengthDiff < MIN_LENGTH_DIFF) {
+        foundIssue = true;
+    }
+    
+    var modifications = new Object();
+    if(foundIssue) {
+        modifications.color = issueColor;
+        modifications.opacity = 0.5;
+    }
+    return modifications;
+};
+highlightWeirdComponents.getBackground = function() {
+  return 'rgba(187,238,0,0.5)';
+};
+//  
 // USER SELECTIONS DEFINITIONS FILE  
 //  
 
@@ -385,45 +502,6 @@ highlightNoTerm.getBackground = function() {
 };
 
 
-/** GEOMETRY **/
-
-var MIN_DISTANCE_BETWEEN_COMPONENTS=5;
-var MIN_LENGTH_DIFF=0.05;
-
-var highlightWeirdComponents = new WMEFunction("_cbHighlightExcessComponents", "Excess Components?");
-highlightWeirdComponents.getModifiedAttrs = function(wazeLineSegment) {
-    var components = wazeLineSegment.geometry.components;
-    var foundIssue = false;
-    var lengthSum = 0;
-    var segmentProperties = getComponentsProperties(wazeLineSegment.geometry.components);
-    for(var i = 0; i < segmentProperties.length; i++) {
-        var componentLength = segmentProperties[i].distance;
-        if(componentLength < MIN_DISTANCE_BETWEEN_COMPONENTS) {
-            foundIssue = true;
-        }
-        lengthSum += componentLength;
-    }
-    var pStart = compToPoint(components[0]);
-    var pEnd = compToPoint(components[components.length - 1]);
-    var totalDist = getDistance(pStart, pEnd).distance;
-//    console.log(""+ lengthSum + " and " + totalDist);
-    var lengthDiff = lengthSum - totalDist;
-    
-    
-    // if there is more than just a beginning and end component, and the difference from the total length is really small, this fits this category.
-    if(components.length > 2 && lengthDiff < MIN_LENGTH_DIFF) {
-        foundIssue = true;
-    }
-    var modifications = new Object();
-    if(foundIssue) {
-        modifications.color = "#BE0";
-        modifications.opacity = 0.5;
-    }
-    return modifications;
-};
-highlightWeirdComponents.getBackground = function() {
-  return 'rgba(187,238,0,0.5)';
-};
 
 var highlightEditor = new WMEFunctionExtended("_cbHighlightEditor", "Show specific editor");
 highlightEditor.getModifiedAttrs = function(wazeLineSegment) {
@@ -466,7 +544,7 @@ highlightRecent.getModifiedAttrs = function(wazeLineSegment) {
     return modifications;
 };
 highlightRecent.buildExtended = function() {
-    return '<input type="number" min="0" max="365" size="3" id="' + this.getSelectId() + '" /> days';
+    return '<input type="number" min="0" max="365" size="3" value="7" id="' + this.getSelectId() + '" /> days';
 }
 highlightRecent.init = function() {
     getId(this.getCheckboxId()).onclick = highlightSegments;
@@ -553,7 +631,7 @@ highlightShortSegments.getModifiedAttrs = function(wazeLineSegment) {
     return modifications;
 };
 highlightShortSegments.buildExtended = function() {
-    return '<input type="number" min="0" max="100" size="3" id="' + this.getSelectId() + '" /> meters';
+    return '<input type="number" min="0" max="100" value="5" size="3" id="' + this.getSelectId() + '" /> meters';
 }
 highlightShortSegments.init = function() {
     getId(this.getCheckboxId()).onclick = highlightSegments;
@@ -592,7 +670,7 @@ allModifiers = allModifiers.concat(selectSections[i].selections);
 
 var DEBUG = false;
 
-var possibleWazeMapEvents = ["mouseout"];
+var possibleWazeMapEvents = ["mouseout", "zoomend"];
 var possibleControllerEvents = ["loadend"];
 var possiblePendingControllerEvents = [];
 var possibleSelectionModifyEvents = ["deactivate", "featuredeselected"];
@@ -714,7 +792,6 @@ function populateCityList() {
     for (var cit in wazeModel.cities.objects) {
         var city = wazeModel.cities.get(cit);
         if (cityIds[city.id] == null && city.name != null && city.name.length > 0) {
-            console.log("city.id" + city.id +  "= '" + city.name + "'");
             cityIds[city.id] = city.name;
         }
     }
@@ -743,40 +820,6 @@ function getId(node) {
     return document.getElementById(node);
 }
 
-function createSectionOld(sectionName, modifiers) {
-    // advanced options
-    var section = document.createElement('div');
-    section.style.paddingTop = "8px";
-    section.id = 'WMEAdd_advancedOptions';
-    var aheader = document.createElement('h4');
-    aheader.innerHTML = '<b>' + sectionName + '</b>';
-    section.appendChild(aheader);
-
-    // section.innerHTML = '<h4><b>Advanced Options</b></h4>';
-    for (var i = 0; i < modifiers.length; i++) {
-        var segMod = modifiers[i];
-        var segmentContainer = document.createElement('div');
-        
-        var segmentColor = document.createElement('div');
-        segmentColor.innerHTML="▶";
-        segmentColor.style.color = segMod.getBackground();
-        segmentColor.style.textShadow = "1px 1px 2px #333";
-        segmentColor.style.cssFloat = "left";
-        segmentColor.style.height = "100%";
-        segmentColor.style.lineHeight = "100%";
-        
-        var segmentBuild = document.createElement('div');
-        segmentBuild.innerHTML = segMod.build();
-        segmentBuild.style.paddingLeft = "1.5em";
-        
-        segmentContainer.appendChild(segmentColor);
-        segmentContainer.appendChild(segmentBuild);
-        //    segmentContainer.style.background = segMod.getBackground();
-        section.appendChild(segmentContainer);
-    }
-    return section;
-}
-
 function createSection(sectionItem) {
     // advanced options
     var section = document.createElement('div');
@@ -787,7 +830,6 @@ function createSection(sectionItem) {
     section.appendChild(aheader);
 
     var modifiers = sectionItem.selections;
-    // section.innerHTML = '<h4><b>Advanced Options</b></h4>';
     for (var i = 0; i < modifiers.length; i++) {
         var segMod = modifiers[i];
         var segmentContainer = document.createElement('div');
@@ -828,11 +870,7 @@ var clickBarContainer = document.createElement('div');
 var clickBar = document.createElement('a');
 clickBar.id = "WME_ADD_addOnToggle"
 clickBar.innerHTML = 'Show / Hide';
-// clickBar.style.background = '#ccc';
 clickBar.style.textAlign = 'center';
-// clickBar.style.margin = '0 auto';
-// clickBar.style.width = '100%';
-// clickBar.style.cursor = 'pointer';
 clickBar.onclick = toggleAddonVisible;
 clickBarContainer.style.margin = '0 auto';
 clickBarContainer.style.textAlign = 'center';
@@ -845,17 +883,9 @@ addon.id = "highlight-addon";
 
 addon.innerHTML = '<b>WME Add</b> ' + version;
 
-//addon.appendChild(createSection("Highlight Segments", segmentModifiers));
-//addon.appendChild(createSection("Extended Options", advancedModifiers));
-
 for(var i = 0; i < selectSections.length; i++) {
     addon.appendChild(createSection(selectSections[i]));
 }
-
-// addon.appendChild(createSection(geometrySection));
-// addon.appendChild(createSection(highlightSection));
-// addon.appendChild(createSection(advancedSection));
-
 
 var section = document.createElement('div');
 section.innerHTML = '<button type="button" id="_cbRefreshButton">Refresh</button> ';

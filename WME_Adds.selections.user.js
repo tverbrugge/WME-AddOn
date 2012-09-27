@@ -132,45 +132,6 @@ highlightNoTerm.getBackground = function() {
 };
 
 
-/** GEOMETRY **/
-
-var MIN_DISTANCE_BETWEEN_COMPONENTS=5;
-var MIN_LENGTH_DIFF=0.05;
-
-var highlightWeirdComponents = new WMEFunction("_cbHighlightExcessComponents", "Excess Components?");
-highlightWeirdComponents.getModifiedAttrs = function(wazeLineSegment) {
-    var components = wazeLineSegment.geometry.components;
-    var foundIssue = false;
-    var lengthSum = 0;
-    var segmentProperties = getComponentsProperties(wazeLineSegment.geometry.components);
-    for(var i = 0; i < segmentProperties.length; i++) {
-        var componentLength = segmentProperties[i].distance;
-        if(componentLength < MIN_DISTANCE_BETWEEN_COMPONENTS) {
-            foundIssue = true;
-        }
-        lengthSum += componentLength;
-    }
-    var pStart = compToPoint(components[0]);
-    var pEnd = compToPoint(components[components.length - 1]);
-    var totalDist = getDistance(pStart, pEnd).distance;
-//    console.log(""+ lengthSum + " and " + totalDist);
-    var lengthDiff = lengthSum - totalDist;
-    
-    
-    // if there is more than just a beginning and end component, and the difference from the total length is really small, this fits this category.
-    if(components.length > 2 && lengthDiff < MIN_LENGTH_DIFF) {
-        foundIssue = true;
-    }
-    var modifications = new Object();
-    if(foundIssue) {
-        modifications.color = "#BE0";
-        modifications.opacity = 0.5;
-    }
-    return modifications;
-};
-highlightWeirdComponents.getBackground = function() {
-  return 'rgba(187,238,0,0.5)';
-};
 
 var highlightEditor = new WMEFunctionExtended("_cbHighlightEditor", "Show specific editor");
 highlightEditor.getModifiedAttrs = function(wazeLineSegment) {
@@ -213,7 +174,7 @@ highlightRecent.getModifiedAttrs = function(wazeLineSegment) {
     return modifications;
 };
 highlightRecent.buildExtended = function() {
-    return '<input type="number" min="0" max="365" size="3" id="' + this.getSelectId() + '" /> days';
+    return '<input type="number" min="0" max="365" size="3" value="7" id="' + this.getSelectId() + '" /> days';
 }
 highlightRecent.init = function() {
     getId(this.getCheckboxId()).onclick = highlightSegments;
@@ -300,7 +261,7 @@ highlightShortSegments.getModifiedAttrs = function(wazeLineSegment) {
     return modifications;
 };
 highlightShortSegments.buildExtended = function() {
-    return '<input type="number" min="0" max="100" size="3" id="' + this.getSelectId() + '" /> meters';
+    return '<input type="number" min="0" max="100" value="5" size="3" id="' + this.getSelectId() + '" /> meters';
 }
 highlightShortSegments.init = function() {
     getId(this.getCheckboxId()).onclick = highlightSegments;
