@@ -2,10 +2,10 @@
 // @name        WME Adds
 // @namespace   WME_ADD
 // @include     https://*.waze.com/editor/*
-// @version     1
+// @version     0.0.2
 // ==/UserScript==
 
-var version = "v0.0.1";
+var version = "v0.0.2";
 if ('undefined' == typeof __WME_ADD_SCOPE_RUN__) {
     (function page_scope_runner() {
         // If we're _not_ already running in the page, grab the full source
@@ -37,8 +37,9 @@ if ('undefined' == typeof __WME_ADD_SCOPE_RUN__) {
 //  
 var WME_ADD_UNKNOWN = -987;
 
-function SelectSection(hdr, slctns) {
+function SelectSection(hdr, iD, slctns) {
 this.header = hdr;
+this.id = iD;
 this.selections = slctns;
 }
 
@@ -121,7 +122,8 @@ Point.prototype.getLineTo = function(p2) {
 //    return new LineBearing(d, bearing);
 }
 
-function WazeLineSegment(segment, street, city) {
+function WazeLineSegment(segment, street) {
+    var city = wazeModel.cities.get(street.cityID);
     this.geometry = segment.geometry;
     this.attributes = segment.attributes;
     this.sid = this.primaryStreetID;
@@ -251,21 +253,17 @@ function calcTan(dLon, dLat) {
 //  
 // COMPONENT SELECTION CLASS  
 //  
-
 /** GEOMETRY **/
-
 
 function getBearingDiff(bearing1, bearing2) {
     // normalize the first angle to 0, and subtract the same from the second;
     var normalizeAngle = bearing1;
     bearing1 -= normalizeAngle;
     var diffAngle = bearing2 - normalizeAngle;
-    
-    
-    if(diffAngle < -180) {
+
+    if (diffAngle < -180) {
         diffAngle += 360;
-    } 
-    else if (diffAngle > 180) {
+    } else if (diffAngle > 180) {
         diffAngle -= 360;
     }
     return diffAngle;
@@ -275,20 +273,35 @@ function rightTurn(bearing1, bearing2) {
     return getBearingDiff(bearing1, bearing2) > 0;
 }
 
-var MIN_DISTANCE_BETWEEN_COMPONENTS=5;
-var MIN_LENGTH_DIFF=0.05;
+var MIN_DISTANCE_BETWEEN_COMPONENTS = 1.5;
+var MIN_LENGTH_DIFF = 0.005;
 
+function between(value, min, max) {
+    if (max < min) {
+        var temp = min;
+        min = max;
+        max = temp
+    }
+    var between = value > min && value < max;
+    //    console.log("between? " + min + " " + value + " " + max + " = " + between);
+    return between;
+}
+
+var ZIG_ZAG_MAX_DIST = 30;
+var ZIG_ZAG_MAX_ANGLE = 3;
+var negate_ZIG_ZAG_MAX_ANGLE = -1 * ZIG_ZAG_MAX_ANGLE;
+var MIN_ANGLE_DIFF = 0.7;
 
 function subtleZigZags(segmentProperties) {
-    // detect zig zagging... 
+    // detect zig zagging...
     var segmentChain = [];
-    for(var i = 0; i < segmentProperties.length; i++) {
+    for (var i = 0; i < segmentProperties.length; i++) {
         var currentSegment = segmentProperties[i];
         segmentChain.push(currentSegment);
-        if(segmentChain.length < 3) {
+        if (segmentChain.length < 3) {
             continue;
         }
-        if(currentSegment.distance > 10) {
+        if (currentSegment.distance > ZIG_ZAG_MAX_DIST) {
             segmentChain = [];
             continue;
         }
@@ -297,13 +310,28 @@ function subtleZigZags(segmentProperties) {
         var bearing1 = origSegment.bearing;
         var bearing2 = pastSegment.bearing;
         var bearing3 = currentSegment.bearing;
-        var isRightTurn1 = rightTurn(bearing1, bearing2);
-        var isRightTurn2 = rightTurn(bearing2, bearing3);
-        
+
         var bearDiff1 = getBearingDiff(bearing1, bearing2);
         var bearDiff2 = getBearingDiff(bearing2, bearing3);
-        
-        if((bearDiff1 < 0 && bearDiff2 > 0) || (bearDiff1 > 0 && bearDiff2 < 0)) {
+
+        if ((between(bearDiff1, 0, ZIG_ZAG_MAX_ANGLE) && between(bearDiff2, 0, negate_ZIG_ZAG_MAX_ANGLE)) || (between(bearDiff1, 0, negate_ZIG_ZAG_MAX_ANGLE) && between(bearDiff2, 0, ZIG_ZAG_MAX_ANGLE))) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function checkForLowAngles(segmentProperties) {
+    if (segmentProperties.length < 2) {
+        return;
+    }
+    for (var i = 0; i < segmentProperties.length - 1; i++) {
+        var currentSegment = segmentProperties[i];
+        var nextSegment = segmentProperties[i + 1];
+        var bearing1 = currentSegment.bearing;
+        var bearing2 = nextSegment.bearing;
+        var bearDiff1 = getBearingDiff(bearing1, bearing2);
+        if (Math.abs(bearDiff1) < MIN_ANGLE_DIFF) {
             return true;
         }
     }
@@ -318,53 +346,116 @@ function subtleZigZags(segmentProperties) {
 
 // Check for issues when (angle / length) reaches a threshold.  So sharp angles reach the threshold with small lengths;
 
-//
+// --
 
-// // // 
+// Take the difference between the total sum and the sum of the components.  Take the the differene to create an average distance per component. If that average exceeds a trheshoold...
+
+// // //
 
 // On major streets, checks to see that there aren't places where the street can't continue due to turn restrictions.
 
-var highlightWeirdComponents = new WMEFunction("_cbHighlightExcessComponents", "Unusual Geometry");
-highlightWeirdComponents.getModifiedAttrs = function(wazeLineSegment) {
+var highlightExcessComponents = new WMEFunction("_cbHighlightExcessComponents", "Excess Components");
+highlightExcessComponents.getModifiedAttrs = function(wazeLineSegment) {
     var components = wazeLineSegment.geometry.components;
+    if (components.length <= 2) {
+        return new Object();
+    }
     var foundIssue = false;
     var lengthSum = 0;
     var segmentProperties = getComponentsProperties(wazeLineSegment.geometry.components);
     var issueColor = "#BE0";
-    
+
     // If the space between components is really small, we note that as an issue
-    for(var i = 0; i < segmentProperties.length; i++) {
+    for (var i = 0; i < segmentProperties.length; i++) {
         var componentLength = segmentProperties[i].distance;
-        if(componentLength < MIN_DISTANCE_BETWEEN_COMPONENTS) {
-            foundIssue = true;
-        }
         lengthSum += componentLength;
     }
-    
-    if(subtleZigZags(segmentProperties)) {
-        issueColor = "#a00";
-        foundIssue = true;
-    }
-    
     // if there is more than just a beginning and end component, and the difference from the total length is really small, this fits this category.
     var pStart = compToPoint(components[0]);
     var pEnd = compToPoint(components[components.length - 1]);
     var totalDist = getDistance(pStart, pEnd).distance;
     var lengthDiff = lengthSum - totalDist;
-    if(components.length > 2 && lengthDiff < MIN_LENGTH_DIFF) {
+
+    if (!foundIssue && components.length > 2) {
+        var numXtraComps = components.length - 2;
+        // NEW
+        var avgDiffPerSeg = lengthDiff / numXtraComps;
+        var avgLengthPerSeg = lengthSum / numXtraComps;
+        if (avgDiffPerSeg < 0.003) {
+            foundIssue = true;
+        } else if (avgLengthPerSeg < 3) {
+            foundIssue = true;
+        } else if (lengthDiff < MIN_LENGTH_DIFF) {
+            //           foundIssue = true;
+        }
+    }
+    if (!foundIssue && checkForLowAngles(segmentProperties)) {
         foundIssue = true;
     }
-    
+
     var modifications = new Object();
-    if(foundIssue) {
+    if (foundIssue) {
         modifications.color = issueColor;
         modifications.opacity = 0.5;
     }
     return modifications;
 };
-highlightWeirdComponents.getBackground = function() {
-  return 'rgba(187,238,0,0.5)';
+highlightExcessComponents.getBackground = function() {
+    return 'rgba(187,238,0,0.5)';
 };
+
+var highlightCloseComponents = new WMEFunction("_cbHighlightCloseComponents", "Close Components");
+highlightCloseComponents.getModifiedAttrs = function(wazeLineSegment) {
+    var components = wazeLineSegment.geometry.components;
+    if (components.length <= 2) {
+        return new Object();
+    }
+    var foundIssue = false;
+    var segmentProperties = getComponentsProperties(wazeLineSegment.geometry.components);
+    var issueColor = "#BE0";
+
+    // If the space between components is really small, we note that as an issue
+    for (var i = 0; i < segmentProperties.length; i++) {
+        var componentLength = segmentProperties[i].distance;
+        if (componentLength < MIN_DISTANCE_BETWEEN_COMPONENTS) {
+            foundIssue = true;
+        }
+    }
+    var modifications = new Object();
+    if (foundIssue) {
+        modifications.color = issueColor;
+        modifications.opacity = 0.5;
+    }
+    return modifications;
+};
+highlightCloseComponents.getBackground = function() {
+    return 'rgba(187,238,0,0.5)';
+};
+
+var highlightZigZagsComponents = new WMEFunction("_cbHighlightZigZagsComponents", "Subtle Zig-Zags");
+highlightZigZagsComponents.getModifiedAttrs = function(wazeLineSegment) {
+    var components = wazeLineSegment.geometry.components;
+    if (components.length <= 2) {
+        return new Object();
+    }
+    var foundIssue = false;
+    var segmentProperties = getComponentsProperties(wazeLineSegment.geometry.components);
+    var issueColor = "#E10";
+
+    if (subtleZigZags(segmentProperties)) {
+        foundIssue = true;
+    }
+    var modifications = new Object();
+    if (foundIssue) {
+        modifications.color = issueColor;
+        modifications.opacity = 0.5;
+    }
+    return modifications;
+};
+highlightZigZagsComponents.getBackground = function() {
+    return 'rgba(238,16,0,0.5)';
+};
+
 //  
 // USER SELECTIONS DEFINITIONS FILE  
 //  
@@ -556,7 +647,7 @@ highlightRecent.getBackground = function() {
 };
 
 
-var highlightRoadType = new WMEFunctionExtended("_cbHighlightRoadType", "RoadType");
+var highlightRoadType = new WMEFunctionExtended("_cbHighlightRoadType", "Road Type");
 highlightRoadType.roadTypeStrings = RoadTypeString;
 highlightRoadType.getModifiedAttrs = function(wazeLineSegment) {
 
@@ -652,9 +743,9 @@ highlightNull.getModifiedAttrs = function(wazeLineSegment) {
 };
 
 
-var geometrySection = new SelectSection("Geometry", [highlightWeirdComponents, highlightNoTerm, highlightShortSegments]);
-var highlightSection = new SelectSection("Highlight Segments", [highlightOneWay, highlightNoDirection, highlightToll, highlightLocked, highlightNoName, highlightCity, speedColor, highlightRoadType]);
-var advancedSection = new SelectSection("Advanced", [highlightEditor, highlightRecent]);
+var geometrySection = new SelectSection("Geometry", 'WME_geometry_section', [highlightExcessComponents, highlightZigZagsComponents, highlightCloseComponents, highlightNoTerm, highlightShortSegments]);
+var highlightSection = new SelectSection("Highlight Segments", 'WME_Segments_section', [highlightOneWay, highlightNoDirection, highlightToll, highlightLocked, highlightNoName, highlightCity, speedColor, highlightRoadType]);
+var advancedSection = new SelectSection("Advanced", 'WME_Advanced_section', [highlightEditor, highlightRecent]);
 
 var selectSections = [highlightSection,geometrySection, advancedSection];
 
@@ -729,7 +820,7 @@ function modifySegements(modifier) {
                 continue;
             }
 
-            var wazeLineSeg = new WazeLineSegment(segment, street, wazeModel.cities.get(street.cityID));
+            var wazeLineSeg = new WazeLineSegment(segment, street);
             var lineMods = modifier.getModifiedAttrs(wazeLineSeg);
 
             var newColor = lineMods.color ? lineMods.color : currentColor;
@@ -820,16 +911,45 @@ function getId(node) {
     return document.getElementById(node);
 }
 
+function createSectionHeader(title, opened) {
+    var indicator = "&lt;&lt;"
+    if(!opened) {
+        indicator = "&gt;&gt;"
+    }
+    return '<b>' + title + '</b><span style="float:right;padding:0;margin:0 0 0 2px;border: 1px solid #999; background: #aaa; color:#fff;">' + indicator + '</span>'
+}
+
 function createSection(sectionItem) {
+    var thisSectionItem = sectionItem;
     // advanced options
     var section = document.createElement('div');
-    section.style.paddingTop = "8px";
-    section.id = 'WMEAdd_advancedOptions';
+    section.style.marginTop = "4px";
+    section.style.padding = "4px";
+    section.style.borderStyle = "solid";
+    section.style.borderWidth = "1px";
+    section.style.borderColor = "#aaa";
+    section.id = thisSectionItem.id;
     var aheader = document.createElement('h4');
-    aheader.innerHTML = '<b>' + sectionItem.header + '</b>';
-    section.appendChild(aheader);
+    aheader.innerHTML = createSectionHeader(thisSectionItem.header, false);
+    aheader.style.display = 'block';
+    aheader.style.cursor = 'pointer';
 
-    var modifiers = sectionItem.selections;
+    section.appendChild(aheader);
+    
+    var segmentsContainer = document.createElement('div');
+    segmentsContainer.style.display = 'none';
+    aheader.onclick = function() {
+        if(segmentsContainer.style.display == 'block') {
+            segmentsContainer.style.display = 'none';
+            aheader.innerHTML = createSectionHeader(thisSectionItem.header, false);
+        } else {
+            segmentsContainer.style.display = 'block';
+            aheader.innerHTML = createSectionHeader(thisSectionItem.header, true);
+        }
+    };
+    section.appendChild(segmentsContainer);
+    
+    var modifiers = thisSectionItem.selections;
     for (var i = 0; i < modifiers.length; i++) {
         var segMod = modifiers[i];
         var segmentContainer = document.createElement('div');
@@ -849,7 +969,7 @@ function createSection(sectionItem) {
         segmentContainer.appendChild(segmentColor);
         segmentContainer.appendChild(segmentBuild);
         //    segmentContainer.style.background = segMod.getBackground();
-        section.appendChild(segmentContainer);
+        segmentsContainer.appendChild(segmentContainer);
     }
     return section;
 }
@@ -951,7 +1071,6 @@ var advancedMode = false;
 if (loginManager != null) {
     thisUser = loginManager.getLoggedInUser();
     if (thisUser != null && thisUser.normalizedLevel >= 4) {
-        getId('WMEAdd_advancedOptions').style.display = 'block';
         advancedMode = true;
 //        initUserList();
         populateUserList();
@@ -1020,7 +1139,6 @@ function createEventAction(eventHolderName, actionName) {
 window.addEventListener("load", function(e) {
     thisUser = loginManager.getLoggedInUser();
     if (!advancedMode && thisUser.normalizedLevel >= 4) {
-        getId('WMEAdd_advancedOptions').style.display = 'block';
         advancedMode = true;
         populateUserList();
         populateCityList();

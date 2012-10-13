@@ -1,7 +1,8 @@
 var WME_ADD_UNKNOWN = -987;
 
-function SelectSection(hdr, slctns) {
+function SelectSection(hdr, iD, slctns) {
 this.header = hdr;
+this.id = iD;
 this.selections = slctns;
 }
 
@@ -84,7 +85,8 @@ Point.prototype.getLineTo = function(p2) {
 //    return new LineBearing(d, bearing);
 }
 
-function WazeLineSegment(segment, street, city) {
+function WazeLineSegment(segment, street) {
+    var city = wazeModel.cities.get(street.cityID);
     this.geometry = segment.geometry;
     this.attributes = segment.attributes;
     this.sid = this.primaryStreetID;

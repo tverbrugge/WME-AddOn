@@ -60,7 +60,7 @@ function modifySegements(modifier) {
                 continue;
             }
 
-            var wazeLineSeg = new WazeLineSegment(segment, street, wazeModel.cities.get(street.cityID));
+            var wazeLineSeg = new WazeLineSegment(segment, street);
             var lineMods = modifier.getModifiedAttrs(wazeLineSeg);
 
             var newColor = lineMods.color ? lineMods.color : currentColor;
@@ -151,16 +151,45 @@ function getId(node) {
     return document.getElementById(node);
 }
 
+function createSectionHeader(title, opened) {
+    var indicator = "&lt;&lt;"
+    if(!opened) {
+        indicator = "&gt;&gt;"
+    }
+    return '<b>' + title + '</b><span style="float:right;padding:0;margin:0 0 0 2px;border: 1px solid #999; background: #aaa; color:#fff;">' + indicator + '</span>'
+}
+
 function createSection(sectionItem) {
+    var thisSectionItem = sectionItem;
     // advanced options
     var section = document.createElement('div');
-    section.style.paddingTop = "8px";
-    section.id = 'WMEAdd_advancedOptions';
+    section.style.marginTop = "4px";
+    section.style.padding = "4px";
+    section.style.borderStyle = "solid";
+    section.style.borderWidth = "1px";
+    section.style.borderColor = "#aaa";
+    section.id = thisSectionItem.id;
     var aheader = document.createElement('h4');
-    aheader.innerHTML = '<b>' + sectionItem.header + '</b>';
-    section.appendChild(aheader);
+    aheader.innerHTML = createSectionHeader(thisSectionItem.header, false);
+    aheader.style.display = 'block';
+    aheader.style.cursor = 'pointer';
 
-    var modifiers = sectionItem.selections;
+    section.appendChild(aheader);
+    
+    var segmentsContainer = document.createElement('div');
+    segmentsContainer.style.display = 'none';
+    aheader.onclick = function() {
+        if(segmentsContainer.style.display == 'block') {
+            segmentsContainer.style.display = 'none';
+            aheader.innerHTML = createSectionHeader(thisSectionItem.header, false);
+        } else {
+            segmentsContainer.style.display = 'block';
+            aheader.innerHTML = createSectionHeader(thisSectionItem.header, true);
+        }
+    };
+    section.appendChild(segmentsContainer);
+    
+    var modifiers = thisSectionItem.selections;
     for (var i = 0; i < modifiers.length; i++) {
         var segMod = modifiers[i];
         var segmentContainer = document.createElement('div');
@@ -180,7 +209,7 @@ function createSection(sectionItem) {
         segmentContainer.appendChild(segmentColor);
         segmentContainer.appendChild(segmentBuild);
         //    segmentContainer.style.background = segMod.getBackground();
-        section.appendChild(segmentContainer);
+        segmentsContainer.appendChild(segmentContainer);
     }
     return section;
 }
@@ -282,7 +311,6 @@ var advancedMode = false;
 if (loginManager != null) {
     thisUser = loginManager.getLoggedInUser();
     if (thisUser != null && thisUser.normalizedLevel >= 4) {
-        getId('WMEAdd_advancedOptions').style.display = 'block';
         advancedMode = true;
 //        initUserList();
         populateUserList();
@@ -351,7 +379,6 @@ function createEventAction(eventHolderName, actionName) {
 window.addEventListener("load", function(e) {
     thisUser = loginManager.getLoggedInUser();
     if (!advancedMode && thisUser.normalizedLevel >= 4) {
-        getId('WMEAdd_advancedOptions').style.display = 'block';
         advancedMode = true;
         populateUserList();
         populateCityList();

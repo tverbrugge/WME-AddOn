@@ -2,10 +2,10 @@
 // @name        WME Adds
 // @namespace   WME_ADD
 // @include     https://*.waze.com/editor/*
-// @version     1
+// @version     0.0.2
 // ==/UserScript==
 
-var version = "v0.0.1";
+var version = "v0.0.2";
 if ('undefined' == typeof __WME_ADD_SCOPE_RUN__) {
     (function page_scope_runner() {
         // If we're _not_ already running in the page, grab the full source

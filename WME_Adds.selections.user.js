@@ -186,7 +186,7 @@ highlightRecent.getBackground = function() {
 };
 
 
-var highlightRoadType = new WMEFunctionExtended("_cbHighlightRoadType", "RoadType");
+var highlightRoadType = new WMEFunctionExtended("_cbHighlightRoadType", "Road Type");
 highlightRoadType.roadTypeStrings = RoadTypeString;
 highlightRoadType.getModifiedAttrs = function(wazeLineSegment) {
 
@@ -282,9 +282,9 @@ highlightNull.getModifiedAttrs = function(wazeLineSegment) {
 };
 
 
-var geometrySection = new SelectSection("Geometry", [highlightWeirdComponents, highlightNoTerm, highlightShortSegments]);
-var highlightSection = new SelectSection("Highlight Segments", [highlightOneWay, highlightNoDirection, highlightToll, highlightLocked, highlightNoName, highlightCity, speedColor, highlightRoadType]);
-var advancedSection = new SelectSection("Advanced", [highlightEditor, highlightRecent]);
+var geometrySection = new SelectSection("Geometry", 'WME_geometry_section', [highlightExcessComponents, highlightZigZagsComponents, highlightCloseComponents, highlightNoTerm, highlightShortSegments]);
+var highlightSection = new SelectSection("Highlight Segments", 'WME_Segments_section', [highlightOneWay, highlightNoDirection, highlightToll, highlightLocked, highlightNoName, highlightCity, speedColor, highlightRoadType]);
+var advancedSection = new SelectSection("Advanced", 'WME_Advanced_section', [highlightEditor, highlightRecent]);
 
 var selectSections = [highlightSection,geometrySection, advancedSection];
 
