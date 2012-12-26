@@ -157,7 +157,7 @@ highlightCloseComponents.getModifiedAttrs = function(wazeLineSegment) {
     }
     var foundIssue = false;
     var segmentProperties = getComponentsProperties(wazeLineSegment.geometry.components);
-    var issueColor = "#BE0";
+    var issueColor = "#B00";
 
     // If the space between components is really small, we note that as an issue
     for (var i = 0; i < segmentProperties.length; i++) {
@@ -169,12 +169,12 @@ highlightCloseComponents.getModifiedAttrs = function(wazeLineSegment) {
     var modifications = new Object();
     if (foundIssue) {
         modifications.color = issueColor;
-        modifications.opacity = 0.5;
+        modifications.opacity = 0.7;
     }
     return modifications;
 };
 highlightCloseComponents.getBackground = function() {
-    return 'rgba(187,238,0,0.5)';
+    return 'rgba(187,0,0,0.7)';
 };
 
 var highlightZigZagsComponents = new WMEFunction("_cbHighlightZigZagsComponents", "Subtle Zig-Zags");

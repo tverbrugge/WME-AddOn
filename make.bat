@@ -23,6 +23,11 @@ echo //  >> %OUTPUT_FILE%
 type WME_Adds.selections.user.js >> %OUTPUT_FILE%
 
 echo //  >> %OUTPUT_FILE%
+echo // POPUP DIALOG  >> %OUTPUT_FILE%
+echo //  >> %OUTPUT_FILE%
+type WME_Adds.popup.user.js >> %OUTPUT_FILE%
+
+echo //  >> %OUTPUT_FILE%
 echo // CORE FILE  >> %OUTPUT_FILE%
 echo //  >> %OUTPUT_FILE%
 type WME_Adds.core.user.js >> %OUTPUT_FILE%

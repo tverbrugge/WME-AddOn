@@ -1,9 +1,50 @@
 var WME_ADD_UNKNOWN = -987;
 
+var FRONT_ABBREVS = ["S", "N", "E", "W"]
+var END_ABBREVS = ["Ave", "Blvd", "Cir", "Ct", "Dr", "Hts", "Ln", "Loop", "Pkwy", "Pl", "Rd", "St", "Trl", "Way"]
+
 function SelectSection(hdr, iD, slctns) {
 this.header = hdr;
 this.id = iD;
 this.selections = slctns;
+}
+
+
+function isTrafficRelevant(roadType) {
+    switch(roadType) {
+    case 1: //"Streets",
+    case 2: //"Primary Street",
+    case 3: //"Freeways",
+    case 4: //"Ramps",
+    case 6: //"Major Highway",
+    case 7: //"Minor Highway",
+    case 21: //"Service Road"};
+        return true;
+    default:
+        return false;
+    }
+}
+function isOneWay(segment) {
+    return ((segment.attributes.fwdDirection + segment.attributes.revDirection) == 1);
+}
+
+function getSegmentSpeed(segment) {
+    var speedToUse = 0;
+    var oneWay = isOneWay(segment);
+    if (oneWay && segment.attributes.fwdDirection) {
+        speedToUse = segment.attributes.fwdCrossSpeed;
+    } else if (oneWay && segment.attributes.revDirection) {
+        speedToUse = segment.attributes.revCrossSpeed;
+    } else {
+        // take average?  we could do a max, or a min, or ...
+        speedToUse = (segment.attributes.revCrossSpeed + segment.attributes.fwdCrossSpeed) / 2;
+    }
+    if(!isNaN(speedToUse)) {
+        speedToUse *= 0.621;                        // convert from km/h to MPH
+        speedToUse = Math.ceil(speedToUse / 5) * 5; // round up to the nearest 5 mph
+        speedToUse = Math.round(speedToUse);        // may not be necessary
+    }
+    return speedToUse;
 }
 
 // CLASS DEFINITIONS
@@ -86,15 +127,15 @@ Point.prototype.getLineTo = function(p2) {
 }
 
 function WazeLineSegment(segment, street) {
-    var city = wazeModel.cities.get(street.cityID);
+    this.cityID = street.cityID;
+    var city = wazeModel.cities.get(this.cityID);
     this.geometry = segment.geometry;
     this.attributes = segment.attributes;
-    this.sid = this.primaryStreetID;
     this.line = getId(segment.geometry.id);
-    this.streetName = street.name;
+    this.streetName = null;
     this.noName = street.isEmpty;
-    this.cityID = street.cityID;
-    this.noCity = city.isEmpty;
+    this.noCity = city == null || city.isEmpty;
+    this.state = this.noCity ? null : wazeModel.states.get(city.stateID);
     this.oneWay = ((this.attributes.fwdDirection + this.attributes.revDirection) == 1);
     // it is 1-way only if either is true
     this.noDirection = (!this.attributes.fwdDirection && !this.attributes.revDirection);
@@ -105,7 +146,24 @@ function WazeLineSegment(segment, street) {
     this.revSpeed = Math.abs(this.attributes.revCrossSpeed);
     this.length = this.attributes.length;
     this.roadType = this.attributes.roadType;
+    this.segment = segment;
 }
+
+WazeLineSegment.prototype.getStreetName = function() {
+
+	if(!this.streetName) {
+		var sid = this.segment.attributes.primaryStreetID;
+		var street = wazeModel.streets.get(sid);
+		if(sid && street.name !== null) { 
+			this.streetName = street.name; 
+		}
+		else {
+			this.streetName = "";
+		}
+	} 
+	return this.streetName;
+};
+
 
 function WazeNode(wazeNode, attachedSegments) {
 }
@@ -122,7 +180,7 @@ WMEFunction.prototype.getBackground = function() {
     return '#fff';
 };
 WMEFunction.prototype.build = function() {
-    return '<input type="checkbox" id="' + this.getCheckboxId() + '" /> ' + this.text;
+    return '<input style="" type="checkbox" id="' + this.getCheckboxId() + '" /> ' + this.text;
 };
 WMEFunction.prototype.init = function() {
     getId(this.getCheckboxId()).onclick = highlightSegments;
