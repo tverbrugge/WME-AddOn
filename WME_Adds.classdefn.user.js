@@ -179,8 +179,9 @@ WMEFunction.prototype.getCheckboxId = function() {
 WMEFunction.prototype.getBackground = function() {
     return '#fff';
 };
-WMEFunction.prototype.build = function() {
-    return '<input style="" type="checkbox" id="' + this.getCheckboxId() + '" /> ' + this.text;
+WMEFunction.prototype.build = function(checkValue) {
+	var checkStr = checkValue ? "checked" : "";
+    return '<input style="" type="checkbox" id="' + this.getCheckboxId() + '" ' + checkStr + '/> ' + this.text;
 };
 WMEFunction.prototype.init = function() {
     getId(this.getCheckboxId()).onclick = highlightSegments;
@@ -200,8 +201,8 @@ WMEFunctionExtended.prototype.getSelectId = function() {
 WMEFunctionExtended.prototype.buildExtended = function() {
     return '';
 }
-WMEFunctionExtended.prototype.build = function() {
-    return WMEFunction.prototype.build.call(this) + '<br />' + this.buildExtended();
+WMEFunctionExtended.prototype.build = function(checkValue) {
+    return WMEFunction.prototype.build.call(this, checkValue) + '<br />' + this.buildExtended();
 };
 WMEFunctionExtended.prototype.getSelectFieldChangeFunction = function() {
     var that = this;

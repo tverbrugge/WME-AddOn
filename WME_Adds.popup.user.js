@@ -10,14 +10,21 @@ function showPopup() {
         var segment = selectionManager.modifyControl.featureHover.feature;
 //        var cmpnnts = segment.geometry.components;
 //        var compSegs = getComponentsProperties(cmpnnts);
-        
-        var userString = "<div id='popup_container'>";
+        var popupClass = "";
+		if(segment.attributes.locked) {
+			popupClass += "locked";
+		}
+        var userString = "<div id='popup_container' class='" + popupClass + "'>";
         
         var sid = segment.attributes.primaryStreetID;
         var street = wazeModel.streets.get(sid);
         if(typeof street != 'undefined') {
+            var isFreeway = false;
             var streetStyleClass = 'WME_ADD_streetSign';
 			switch(segment.attributes.roadType) {
+			case 3 : //freeway
+                isFreeway = true;
+                break;
 			case 17: // Private Road
 			case 20: // Parking Lot Road
 				streetStyleClass = 'WME_ADD_parkingLotSign';
@@ -31,7 +38,7 @@ function showPopup() {
             if(sid && street.name !== null) {
                 var streetName = street.name; 
                 var isInterstate = false;
-                if(segment.attributes.roadType == 3) { // freeway
+                if(isFreeway) { // freeway
                     var regexMatch = streetName.match(InterstateRegEx);
                     if(regexMatch != null) {
                         isInterstate = true;
@@ -40,8 +47,14 @@ function showPopup() {
                         streetName = interstateNum;
                     }
                 }
-               
-                if(!isInterstate && isOneWay(segment)) {
+                
+                // Add "Toll"
+                if(segment.attributes.revToll || segment.attributes.fwdToll) {
+                    userString += "<div id='WME_ADD_tollRoad'>Toll</div>"
+                }
+
+                // Add "One Way" arrow
+                if(!isFreeway && isOneWay(segment)) {
                     userString += "<div style='background: #000; color:#fff;font-size:.92em;font-weight:bold;line-height:.7em;'>"
                     userString += "<img src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAARCAAAAAC6bKD1AAABp0lEQVR4XpXRX0hTcRyH4dfDZDW0CSPWqoVnEQghXfQHodNVXYaRYGAXFVjkRRTBumgjCJMZWkMLgnkRWWIorYZhrVKSwv5ehLnFcSw4DaE11s1ghcnhF4yzc+487Ll/4cvnSyHzfLoGL7K/UXdgwztyBEtrhqfYaRdiYhOmV5KOnflVjqVOYHIAbF7PWtRWPKNdPT8wJIA5IRbiZTEn/n7Uksl3QuS/Lau5rFj8mdJE+bWoKJ2TjMOoeN+ZOMrhZCH4uPfRLCz13rp0b4auwVLH6rUZKhpvv2kBwEjGIveLy86QDh3RMMja289ZOS1N7dt9PhHCsP9LuN5K8s0055v2jsKNtjL4tF87X8qTBz0f+icHXFSt63tYZybeHDkvV2MQTjeAo3HPgeLWuFo34Qm0YdKHTgozOR46s8GPrwfiFy4DsqL4ljY+S07rWNLKxXJ1ZFDGMlFiBA/5tlMP9PsbHjTdwX135aabCv5dj6xYfznlAvqoCmIwjO8CPp1eBCvRWIu7Bf5cGdapJhJ2FCezZ79jSW3BxrYn3RKmgEphYaomX4v/Ae4Q1fDFrZZBAAAAAElFTkSuQmCC' />"
                     userString += "</div>"

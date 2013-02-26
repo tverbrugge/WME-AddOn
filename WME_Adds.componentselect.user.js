@@ -99,55 +99,73 @@ function checkForLowAngles(segmentProperties) {
 
 // On major streets, checks to see that there aren't places where the street can't continue due to turn restrictions.
 
-var highlightExcessComponents = new WMEFunction("_cbHighlightExcessComponents", "Excess Components");
-highlightExcessComponents.getModifiedAttrs = function(wazeLineSegment) {
-    var components = wazeLineSegment.geometry.components;
-    if (components.length <= 2) {
-        return new Object();
-    }
-    var foundIssue = false;
-    var lengthSum = 0;
-    var segmentProperties = getComponentsProperties(wazeLineSegment.geometry.components);
-    var issueColor = "#BE0";
+var highlightLowAngles = new WMEFunction("_cbHighlightLowAngles", "Low Angles");
+highlightLowAngles.getModifiedAttrs = function(wazeLineSegment) {
+	var components = wazeLineSegment.geometry.components;
+	if (components.length <= 2) {
+		return new Object();
+	}
+	var foundIssue = false;
+	var segmentProperties = getComponentsProperties(wazeLineSegment.geometry.components);
 
-    // If the space between components is really small, we note that as an issue
-    for (var i = 0; i < segmentProperties.length; i++) {
-        var componentLength = segmentProperties[i].distance;
-        lengthSum += componentLength;
-    }
-    // if there is more than just a beginning and end component, and the difference from the total length is really small, this fits this category.
-    var pStart = compToPoint(components[0]);
-    var pEnd = compToPoint(components[components.length - 1]);
-    var totalDist = getDistance(pStart, pEnd).distance;
-    var lengthDiff = lengthSum - totalDist;
+	if (checkForLowAngles(segmentProperties)) {
+		foundIssue = true;
+	}
 
-    if (!foundIssue && components.length > 2) {
-        var numXtraComps = components.length - 2;
-        // NEW
-        var avgDiffPerSeg = lengthDiff / numXtraComps;
-        var avgLengthPerSeg = lengthSum / numXtraComps;
-        if (avgDiffPerSeg < 0.003) {
-            foundIssue = true;
-        } else if (avgLengthPerSeg < 3) {
-            foundIssue = true;
-        } else if (lengthDiff < MIN_LENGTH_DIFF) {
-            //           foundIssue = true;
-        }
-    }
-    if (!foundIssue && checkForLowAngles(segmentProperties)) {
-        foundIssue = true;
-    }
-
-    var modifications = new Object();
-    if (foundIssue) {
-        modifications.color = issueColor;
-        modifications.opacity = 0.5;
-    }
-    return modifications;
+	var modifications = new Object();
+	if (foundIssue) {
+		modifications.color = "#BE0";
+		modifications.opacity = 0.5;
+	}
+	return modifications;
 };
-highlightExcessComponents.getBackground = function() {
+highlightLowAngles.getBackground = function() {
     return 'rgba(187,238,0,0.5)';
 };
+
+/*
+ *
+ */
+var highlightExcessComponents = new WMEFunction("_cbHighlightHighExcessComponents", "Excess Components");
+highlightExcessComponents.getModifiedAttrs = function(wazeLineSegment) {
+	var components = wazeLineSegment.geometry.components;
+	if (components.length <= 2) {
+		return new Object();
+	}
+	var foundIssue = false;
+	var segmentProperties = getComponentsProperties(wazeLineSegment.geometry.components);
+
+	// If the space between components is really small, we note that as an issue
+	var lengthSum = 0;
+	for (var i = 0; i < segmentProperties.length; i++) {
+		var componentLength = segmentProperties[i].distance;
+		lengthSum += componentLength;
+	}
+	// if there is more than just a beginning and end component, and the difference from the total length is really small, this fits this category.
+	var pStart = compToPoint(components[0]);
+	var pEnd = compToPoint(components[components.length - 1]);
+	var totalDist = getDistance(pStart, pEnd).distance;
+	var lengthDiff = lengthSum - totalDist;
+
+	var numXtraComps = components.length - 2;
+	// NEW
+	var avgDiffPerSeg = lengthDiff / numXtraComps;
+	var avgLengthPerSeg = lengthSum / numXtraComps;
+	if (avgDiffPerSeg < 0.03) {
+		foundIssue = true;
+	} else if (avgLengthPerSeg < 3) {
+		foundIssue = true;
+	} 
+	var modifications = new Object();
+	if (foundIssue) {
+		modifications.color = "#FFD105";
+		modifications.opacity = 0.5;
+	}
+	return modifications;
+};
+highlightExcessComponents.getBackground = function() {
+    return 'rgba(255,209,5,0.5)';
+}; 
 
 var highlightCloseComponents = new WMEFunction("_cbHighlightCloseComponents", "Close Components");
 highlightCloseComponents.getModifiedAttrs = function(wazeLineSegment) {

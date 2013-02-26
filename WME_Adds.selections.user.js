@@ -65,14 +65,14 @@ highlightNoName.getModifiedAttrs = function(wazeLineSegment) {
     var modifications = new Object();
     if (wazeLineSegment.noName) {
         if (isTrafficRelevant(wazeLineSegment.attributes.roadType)) {
-            modifications.color = "#422";
-            modifications.opacity = 0.6;
+            modifications.color = "#424";
+            modifications.opacity = 0.7;
         }
     }
     return modifications;
 };
 highlightNoName.getBackground = function() {
-    return 'rgba(64,32,32,0.6)';
+    return 'rgba(64,32,64,0.7)';
 };
 
 /*
@@ -164,13 +164,13 @@ var highlightNoTerm = new WMEFunction("_cbHighlightNoTerm", "Unterminated");
 highlightNoTerm.getModifiedAttrs = function(wazeLineSegment) {
     var modifications = new Object();
     if (wazeLineSegment.attributes.toNodeID == null || wazeLineSegment.attributes.fromNodeID == null) {
-        modifications.color = "#BE0";
-        modifications.opacity = 0.5;
+        modifications.color = "#FC0";
+        modifications.opacity = 0.7;
     }
     return modifications;
 };
 highlightNoTerm.getBackground = function() {
-    return 'rgba(187,238,0,0.5)';
+    return 'rgba(255,208,0,0.7)';
 };
 
 var highlightEditor = new WMEFunctionExtended("_cbHighlightEditor", "Specific Editor");
@@ -366,7 +366,7 @@ highlightNull.getModifiedAttrs = function(wazeLineSegment) {
     return modifications;
 };
 
-var geometrySection = new SelectSection("Geometry", 'WME_geometry_section', [highlightExcessComponents, highlightZigZagsComponents, highlightCloseComponents, highlightNoTerm, highlightShortSegments]);
+var geometrySection = new SelectSection("Geometry", 'WME_geometry_section', [highlightExcessComponents, highlightLowAngles, highlightZigZagsComponents, highlightCloseComponents, highlightNoTerm, highlightShortSegments]);
 var highlightSection = new SelectSection("Highlight Segments", 'WME_Segments_section', [highlightOneWay, highlightNoDirection, highlightToll, highlightNoName, highlightCity, speedColor, highlightRoadType, highlightSameName, highlightConstZn]);
 var advancedSection = new SelectSection("Advanced", 'WME_Advanced_section', [highlightEditor, highlightRecent, highlightLocked]);
 

@@ -10,15 +10,25 @@ var possibleSelectionModifyHoverEvents = [];
 var possibleActionEvents = [];
 
 
+var webStorageSupported = ('localStorage' in window) && window['localStorage'] !== null;
+
 function highlightSegments() {
-    modifySegements(highlightNull);
-    for (var i = 0; i < allModifiers.length; i++) {
-        var segModGroup = allModifiers[i];
-        if (getId(segModGroup.getCheckboxId()).checked) {
-            modifySegements(segModGroup);
-        }
-    }
-    return true;
+	modifySegements(highlightNull);
+	for (var i = 0; i < allModifiers.length; i++) {
+		var segModGroup = allModifiers[i];
+		var isChecked = getId(segModGroup.getCheckboxId()).checked
+		if (isChecked) {
+			modifySegements(segModGroup);
+		}
+		if(webStorageSupported) {
+			if(isChecked) {
+				window.localStorage.setItem(segModGroup.checkboxId, 'checked');
+			} else {
+				window.localStorage.removeItem(segModGroup.checkboxId);
+			}
+		}
+	}
+	return true;
 }
 
 function enumerateAllModifiers(work) {
@@ -210,7 +220,8 @@ function createSection(sectionItem) {
         segmentColor.style.verticalAlign = "middle";
         
         var segmentBuild = document.createElement('div');
-        segmentBuild.innerHTML = segMod.build();
+		var isChecked = window.localStorage.getItem(segMod.getCheckboxId()) === 'checked';
+        segmentBuild.innerHTML = segMod.build(isChecked);
         segmentBuild.style.paddingLeft = "1.5em";
         
         segmentContainer.appendChild(segmentColor);
@@ -261,19 +272,22 @@ stylizer.innerHTML +=
     box-shadow: inset 0 0 5px 2px #aaaaaa, 0 1px 0 0 #eeeeee; \
 } "
 stylizer.innerHTML += "#WME_ADD_Popup {background: #fff;position:absolute;bottom:48px;right:24px;}"
-stylizer.innerHTML += "#WME_ADD_Popup #popup_container {text-align: center;font-size: 1.1em;}"
+stylizer.innerHTML += "#WME_ADD_Popup #popup_container {text-align: center;font-size: 1.1em; margin: 1px; border:solid 1px #000;border-radius: 2px;}"
+stylizer.innerHTML += "#WME_ADD_Popup #popup_container.locked {border:solid 2px #f00;}"
 
 stylizer.innerHTML += "#WME_ADD_Popup #popup_container #popup_street_name {font-size:.8em; margin:0;padding:0;line-height:1em;}"
 stylizer.innerHTML += "#WME_ADD_Popup #popup_container #popup_street_name #street_name_prefix {font-size: .6em;vertical-align:middle;}"
 stylizer.innerHTML += "#WME_ADD_Popup #popup_container #popup_street_name #street_name_suffix {font-size: .65em;vertical-align:top;}"
 
-stylizer.innerHTML += "#WME_ADD_Popup #popup_container #popup_street_city {font-size:.8em;margin:0;padding:0;line-height:1em;}"
+stylizer.innerHTML += "#WME_ADD_Popup #popup_container #popup_street_city {font-size:.8em;margin:1px 0 0 0;padding:0;line-height:1em;}"
 
 stylizer.innerHTML += "#WME_ADD_Popup .WME_ADD_parkingLotSign {background: #aaa; color:#000;font-style:italic;}"
 stylizer.innerHTML += "#WME_ADD_Popup .WME_ADD_streetSign {background: #006F53; color:#fff;}"
 stylizer.innerHTML += "#WME_ADD_Popup .WME_ADD_trailSign {background: #8C6019; color:#000; font-weight:bold;}"
 stylizer.innerHTML += "#WME_ADD_Popup #popup_container #popup_street_name.WME_ADD_interstate {background-color: #006F53; background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAeCAIAAAC0Ujn1AAAABnRSTlMA/wD/AP83WBt9AAAACXBIWXMAAAsTAAALEwEAmpwYAAADPElEQVR42rXWzWsTWxjH8e+cTgiTVNvEoi5sqvW1paCiFBciWKluAiKC4E7c6EKqCK5c+A8IbisqKCJuFAQ3roW6sCAl+NJILDY1jZnO5MWazOT1uYvJrVdvq6jTHwNz5uE5Hw4zzMzRRAQALMvqSCQYGiIQADRN8+rthnqdyUmUYv9+dH2ZhlpN3r5l9+5oNOrVde9ULpfDjx8b588TCjEwQG8vPT2EQjgOts3cHG/eUKkAhMMMDbFpE9EohkGlgmUxO8v0NI7z9e5d59QpwzAA5dFOLmdcuwawdy8bNpBO8/o1a9YwPc3Wreg6Y2Ps2MHZs+zZw65dGAavXvHoEZEIlQoHD3LkCNB59WrZND1TAYVCIXL7NrkcwPAwx49z8SKpFJUKPT0kk+g6tRojIwwOYll8+EAySTzO6CjFIhMT9PczMQGQyXTdv18qldp0q1zuuHWLpSSTbNny7bJYBNi8mRcvuHePkyfb9b4+Bgf594ZSq3nDwM2bDccBdMdxjGfPsKx2UyIBMDWF65JIYNscPcrLl4yPE4mwbx+Tk3z+TKvFgwd0dFCp0GhQLDIywtOnAJ8+BZ4/r584odm2/WWq6M7M419CA7HOgU4WFux16wT8PPr6xLZtlU5rto2/SafJ5zU1M4PvEeHdO1f5vmQvi4sB1WwGV8UmpAKB2mrAuu6qaFRWg167tqr6+/2nNY2dO4MqFmP9ep/p7dvp6kJpmvfN8jMeqILBYDzu+ksfO/Y1HA4jItmstXGjb295LCa5nCUiCggG1diYbw/z8uVmMKi3/2wiMju70Nvrw5K3bZNMZsEz23SpVHr4sPqXrqbJkyfO4uLid7SImKZ57txf0VeuiGmaS+A3utlsZrPW6OgfuvG4ZLMLrVZrGVpEXNf9+LFw6NBvu4cPy9xcoVar/Vf7jvb0TMY+ffo33DNnZH7edl33B+pHWkTq9XouZ46PN7u7f4FGo3LnTsM0zUaj8X9nGdqLbdup1JcLF8QwlkFDIbl0SVKpQj6fX0lYkRaRarVqWVYyWbh+XYaHRSlRSg4ckBs35P37vGVZ9Xr9J9O1pe3kSmk2m95uyLY1pYhEBOju7lZK/XziPwFBIyW1EjjMAAAAAElFTkSuQmCC'); background-repeat: no-repeat; background-position: center center; color:#fff;font-size:.92em;font-weight:bold;min-height:30px;vertical-align: 2px; line-height: 30px;margin: 0 auto;width: 100%}"
 stylizer.innerHTML += ".WME_ADD_interstate#popup_street_city { display: none; }";
+stylizer.innerHTML += "#WME_ADD_Popup #WME_ADD_tollRoad {background: #FFC500; color:#000;font-size: .8em; text-transform: uppercase; font-weight: bold;}"
+
 
 
 stylizer.innerHTML += 
@@ -364,7 +378,7 @@ function createWazeMapEventAction(actionName) {
             highlightSegments();
                     showPopup();
 
-        }, 100);
+        }, 50);
         return true;
     };
 }
@@ -422,10 +436,11 @@ window.addEventListener("load", function(e) {
         var eventName = possibleSelectionModifyHoverEvents[i];
         selectionManager.modifyControl.featureHover.control.events.register(eventName, this, createEventAction("selectionManager.modifyControl.featureHover.control", eventName));
     }
-    for (var i = 0; i < possibleActionEvents.length; i++) {
-        var eventName = possibleActionEvents[i];
-        wazeModel.actionManager.events.register(eventName, this, createEventAction("wazeModel.actionManager", eventName));
-    }
+	for (var i = 0; i < possibleActionEvents.length; i++) {
+		var eventName = possibleActionEvents[i];
+		wazeModel.actionManager.events.register(eventName, this, createEventAction("wazeModel.actionManager", eventName));
+	}
+
     if(DEBUG) {
 //        selectionManager.modifyControl.events.register("blur", this, function(){console.log("sm.mc.blur")});
 //        selectionManager.modifyControl.events.register("touchstart", this, function(){console.log("sm.mc.touchstart")});
