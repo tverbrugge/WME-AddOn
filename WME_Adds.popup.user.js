@@ -4,10 +4,9 @@ getId('editor-container').appendChild(WME_ADD_Popup);
 
 var InterstateRegEx = /^I-\d\d\d? /;
 
-function showPopup() {
-    if(selectionManager.modifyControl.featureHover.feature && 
-        selectionManager.modifyControl.featureHover.feature.CLASS_NAME == 'Waze.Feature.Vector.Segment') {
-        var segment = selectionManager.modifyControl.featureHover.feature;
+function showPopup(segment) {
+//	var segment = getCurrentHoverSegment();
+    if(segment != null) {
 //        var cmpnnts = segment.geometry.components;
 //        var compSegs = getComponentsProperties(cmpnnts);
         var popupClass = "";
@@ -26,9 +25,12 @@ function showPopup() {
                 isFreeway = true;
                 break;
 			case 17: // Private Road
-			case 20: // Parking Lot Road
-				streetStyleClass = 'WME_ADD_parkingLotSign';
+				streetStyleClass = 'WME_ADD_privateStreet';
 				break;
+			case 20: // Parking Lot Road
+				streetStyleClass = 'WME_ADD_parkingLot';
+				break;
+			case 5:  //Walking Trails
 			case 10: //Pedestrian Bw
 				streetStyleClass = 'WME_ADD_trailSign';
                 break;

@@ -76,6 +76,22 @@ highlightNoName.getBackground = function() {
 };
 
 /*
+ * highlight ALTERNATE NAME
+ */
+var highlightWithAlternate = new WMEFunction("_cbHighlightWithAlternate", "With Alternate Name");
+highlightWithAlternate.getModifiedAttrs = function(wazeLineSegment) {
+    var modifications = new Object();
+    if (wazeLineSegment.attributes.streetIDs && wazeLineSegment.attributes.streetIDs.length > 0) {
+        modifications.color = "#FFFF00";
+        modifications.opacity = 0.7;
+    }
+    return modifications;
+};
+highlightWithAlternate.getBackground = function() {
+    return 'rgba(256,256,0,0.7)';
+};
+
+/*
  * highlight CONST ZN
  */
 var highlightConstZn = new WMEFunction("_cbHighlightConstZn", "CONST ZN Street");
@@ -92,18 +108,25 @@ highlightConstZn.getBackground = function() {
     return 'rgba(255,187,0,0.7)';
 };
 
+function getCurrentHoverSegment() {
+    return highlightSegmentMonitor.getLatestSegment();
+}
+
 /*
  * highlight SAME NAME
  */
 var highlightSameName = new WMEFunction("_cbHighlightSameName", "Same Street Name");
 highlightSameName.getModifiedAttrs = function(wazeLineSegment) {
     var modifications = new Object();
-    if (selectionManager.modifyControl.featureHover.feature && selectionManager.modifyControl.featureHover.feature.CLASS_NAME == 'Waze.Feature.Vector.Segment') {
-        var segment = selectionManager.modifyControl.featureHover.feature;
+    var segment = getCurrentHoverSegment();
+    if (segment != null) {
         var highlightedStreetID = segment.attributes.primaryStreetID;
         if (wazeLineSegment.attributes.primaryStreetID === highlightedStreetID) {
+            if (wazeLineSegment.segment.fid !== segment.fid) {
+                modifications.dasharray = "5 15";
+            }
             modifications.color = "#0ad";
-            modifications.opacity = 0.3;
+            modifications.opacity = 0.5;
         }
     }
     return modifications;
@@ -367,7 +390,7 @@ highlightNull.getModifiedAttrs = function(wazeLineSegment) {
 };
 
 var geometrySection = new SelectSection("Geometry", 'WME_geometry_section', [highlightExcessComponents, highlightLowAngles, highlightZigZagsComponents, highlightCloseComponents, highlightNoTerm, highlightShortSegments]);
-var highlightSection = new SelectSection("Highlight Segments", 'WME_Segments_section', [highlightOneWay, highlightNoDirection, highlightToll, highlightNoName, highlightCity, speedColor, highlightRoadType, highlightSameName, highlightConstZn]);
+var highlightSection = new SelectSection("Highlight Segments", 'WME_Segments_section', [highlightOneWay, highlightNoDirection, highlightToll, highlightNoName, highlightWithAlternate, highlightCity, speedColor, highlightRoadType, highlightSameName, highlightConstZn]);
 var advancedSection = new SelectSection("Advanced", 'WME_Advanced_section', [highlightEditor, highlightRecent, highlightLocked]);
 
 var selectSections = [highlightSection, geometrySection, advancedSection];
@@ -377,4 +400,6 @@ var allModifiers = [];
 for (var i = 0; i < selectSections.length; i++) {
     allModifiers = allModifiers.concat(selectSections[i].selections);
 }
+
+var hoverDependentSections = [highlightSameName];
 // var allModifiers = [geometrySection.selections, highlightSection.selections, advancedSection.selections];

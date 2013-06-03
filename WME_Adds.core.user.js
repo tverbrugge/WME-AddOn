@@ -1,5 +1,5 @@
 
-var DEBUG = true;
+var DEBUG = false;
 
 var possibleWazeMapEvents = ["mouseout", "zoomend"];
 var possibleControllerEvents = ["loadend"];
@@ -12,10 +12,17 @@ var possibleActionEvents = [];
 
 var webStorageSupported = ('localStorage' in window) && window['localStorage'] !== null;
 
-function highlightSegments() {
-	modifySegements(highlightNull);
-	for (var i = 0; i < allModifiers.length; i++) {
-		var segModGroup = allModifiers[i];
+function highlightAllSegments() {
+    modifySegements(highlightNull);
+    highlightSegments(allModifiers);
+}
+
+function highlightSegments(modifiers) {
+    if(!modifiers) {
+        modifiers = allModifiers;
+    }
+	for (var i = 0; i < modifiers.length; i++) {
+		var segModGroup = modifiers[i];
 		var isChecked = getId(segModGroup.getCheckboxId()).checked
 		if (isChecked) {
 			modifySegements(segModGroup);
@@ -280,8 +287,18 @@ stylizer.innerHTML += "#WME_ADD_Popup #popup_container #popup_street_name #stree
 stylizer.innerHTML += "#WME_ADD_Popup #popup_container #popup_street_name #street_name_suffix {font-size: .65em;vertical-align:top;}"
 
 stylizer.innerHTML += "#WME_ADD_Popup #popup_container #popup_street_city {font-size:.8em;margin:1px 0 0 0;padding:0;line-height:1em;}"
-
-stylizer.innerHTML += "#WME_ADD_Popup .WME_ADD_parkingLotSign {background: #aaa; color:#000;font-style:italic;}"
+stylizer.innerHTML += "#WME_ADD_Popup .WME_ADD_parkingLot, #WME_ADD_Popup .WME_ADD_privateStreet {\
+background-color:#aaa;\
+color:#000;\
+font-style:italic;\
+}"
+stylizer.innerHTML += "#WME_ADD_Popup .WME_ADD_parkingLotSign {\
+height:21px;\
+padding-right:17px;\
+background-position:right center;\
+background-repeat:no-repeat;\
+background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAVCAYAAABR915hAAAACXBIWXMAAABPAAAATwFjiv3XAAACQElEQVR42sXWT2iUZxDH8c/srtu4zUGtVrBtpBaEokgNohR7CHjyYkvBkxXU2igpIoIgCB7EevQWxKiotILg0lLspdSqFy+CFMVDS0Gwaq0aSeK/YjTJ9LJqupBVE40Dz+Ed5nm/88wz83vf0OUe3vRs+xdXcRyd2Z5/GIMVXiC2gtn4GudjX6wZL/BwK0v7oiu+GC046kp9GWdGiG3Gx5g0bHe3Ju/nyrz/ouBS3fPpbM8VI2Z5MKZ55CcsAmmaBz7Hd6+01Lk6u7EK+dSpbVzuuNbNvcNcU8YFHPtjXh3s71cOjt3xniGH69rz7GjA9c21JLri1Aj9X1bSiqZh3n80qb4M8HRh+nMOYkobRzNKYxGQ+9LqbM/qaAWk/sT30N0g/pZwUujMtXl1LJJZDz7WSEBephW8Jntt4NIzm3dPzDXBtfwye+JQTPKgptNlF3JNXouuWJDr8mzsjVZFlwx62x1XNJvjLef8ZYKKluzI32N/vGvQfG843vDEUY2igqohm0C/DxVsVvSRAT/G9igLO2NPLMQ3PnBHWq+iRcEuvbaoaFHSEXtjqiFHhXke2tq41H2Woiq1RTXKtfkdlPprKh2oKDiMX7ItB/73x5IWK5pT+5gsEb7FAeGHxuAh67AUM/X5rPaCXsyQvs8N2Y9moQPLnyT3eDcbhJ21hHvxDlqlnwu4iRu1dftJmQ/EDNzSbqGJFkif4hF+028bPontUZL+zK/yVxzRYxnuKhpAn+suSp3SXZOdkGZhG3b8B9u3s4ceFzVrAAAAAElFTkSuQmCC');\
+}"
 stylizer.innerHTML += "#WME_ADD_Popup .WME_ADD_streetSign {background: #006F53; color:#fff;}"
 stylizer.innerHTML += "#WME_ADD_Popup .WME_ADD_trailSign {background: #8C6019; color:#000; font-weight:bold;}"
 stylizer.innerHTML += "#WME_ADD_Popup #popup_container #popup_street_name.WME_ADD_interstate {background-color: #006F53; background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAeCAIAAAC0Ujn1AAAABnRSTlMA/wD/AP83WBt9AAAACXBIWXMAAAsTAAALEwEAmpwYAAADPElEQVR42rXWzWsTWxjH8e+cTgiTVNvEoi5sqvW1paCiFBciWKluAiKC4E7c6EKqCK5c+A8IbisqKCJuFAQ3roW6sCAl+NJILDY1jZnO5MWazOT1uYvJrVdvq6jTHwNz5uE5Hw4zzMzRRAQALMvqSCQYGiIQADRN8+rthnqdyUmUYv9+dH2ZhlpN3r5l9+5oNOrVde9ULpfDjx8b588TCjEwQG8vPT2EQjgOts3cHG/eUKkAhMMMDbFpE9EohkGlgmUxO8v0NI7z9e5d59QpwzAA5dFOLmdcuwawdy8bNpBO8/o1a9YwPc3Wreg6Y2Ps2MHZs+zZw65dGAavXvHoEZEIlQoHD3LkCNB59WrZND1TAYVCIXL7NrkcwPAwx49z8SKpFJUKPT0kk+g6tRojIwwOYll8+EAySTzO6CjFIhMT9PczMQGQyXTdv18qldp0q1zuuHWLpSSTbNny7bJYBNi8mRcvuHePkyfb9b4+Bgf594ZSq3nDwM2bDccBdMdxjGfPsKx2UyIBMDWF65JIYNscPcrLl4yPE4mwbx+Tk3z+TKvFgwd0dFCp0GhQLDIywtOnAJ8+BZ4/r584odm2/WWq6M7M419CA7HOgU4WFux16wT8PPr6xLZtlU5rto2/SafJ5zU1M4PvEeHdO1f5vmQvi4sB1WwGV8UmpAKB2mrAuu6qaFRWg167tqr6+/2nNY2dO4MqFmP9ep/p7dvp6kJpmvfN8jMeqILBYDzu+ksfO/Y1HA4jItmstXGjb295LCa5nCUiCggG1diYbw/z8uVmMKi3/2wiMju70Nvrw5K3bZNMZsEz23SpVHr4sPqXrqbJkyfO4uLid7SImKZ57txf0VeuiGmaS+A3utlsZrPW6OgfuvG4ZLMLrVZrGVpEXNf9+LFw6NBvu4cPy9xcoVar/Vf7jvb0TMY+ffo33DNnZH7edl33B+pHWkTq9XouZ46PN7u7f4FGo3LnTsM0zUaj8X9nGdqLbdup1JcLF8QwlkFDIbl0SVKpQj6fX0lYkRaRarVqWVYyWbh+XYaHRSlRSg4ckBs35P37vGVZ9Xr9J9O1pe3kSmk2m95uyLY1pYhEBOju7lZK/XziPwFBIyW1EjjMAAAAAElFTkSuQmCC'); background-repeat: no-repeat; background-position: center center; color:#fff;font-size:.92em;font-weight:bold;min-height:30px;vertical-align: 2px; line-height: 30px;margin: 0 auto;width: 100%}"
@@ -365,7 +382,7 @@ if (loginManager != null) {
 }
 
 // setup onclick handlers for instant update:
-getId('_cbRefreshButton').onclick = highlightSegments;
+getId('_cbRefreshButton').onclick = highlightAllSegments;
 enumerateAllModifiers(function(seg) {
     seg.init();
 });
@@ -375,8 +392,8 @@ enumerateAllModifiers(function(seg) {
 function createWazeMapEventAction(actionName) {
     return function() {
         setTimeout(function() {
-            highlightSegments();
-                    showPopup();
+            highlightAllSegments();
+//                    showPopup();
 
         }, 50);
         return true;
@@ -396,10 +413,19 @@ function analyzeNodes() {
 
 function createEventAction(eventHolderName, actionName) {
     return function() {
-        highlightSegments();
+        highlightAllSegments();
         populateUserList();
         populateCityList();
-        showPopup();
+//        showPopup();
+        return true;
+    };
+}
+
+function createHighlighAction(eventHolderName, actionName) {
+    return function(e) {
+        highlightSegmentMonitor.updateLatestSegment(e.feature);
+        showPopup(e.feature);
+        highlightSegments(hoverDependentSections);
         return true;
     };
 }
@@ -426,7 +452,7 @@ window.addEventListener("load", function(e) {
     }
     for (var i = 0; i < possibleSelectionModifyEvents.length; i++) {
         var eventName = possibleSelectionModifyEvents[i];
-        selectionManager.modifyControl.events.register(eventName, this, createEventAction("selectionManager.modifyControl", eventName));
+//        selectionManager.modifyControl.events.register(eventName, this, createEventAction("selectionManager.modifyControl", eventName));
     }
     for (var i = 0; i < possibleSelectionEvents.length; i++) {
         var eventName = possibleSelectionEvents[i];
@@ -434,16 +460,19 @@ window.addEventListener("load", function(e) {
     }
     for (var i = 0; i < possibleSelectionModifyHoverEvents.length; i++) {
         var eventName = possibleSelectionModifyHoverEvents[i];
-        selectionManager.modifyControl.featureHover.control.events.register(eventName, this, createEventAction("selectionManager.modifyControl.featureHover.control", eventName));
+  //      selectionManager.modifyControl.featureHover.control.events.register(eventName, this, createEventAction("selectionManager.modifyControl.featureHover.control", eventName));
     }
 	for (var i = 0; i < possibleActionEvents.length; i++) {
 		var eventName = possibleActionEvents[i];
 		wazeModel.actionManager.events.register(eventName, this, createEventAction("wazeModel.actionManager", eventName));
 	}
+	selectionManager.selectControl.events.register("featurehighlighted", this, createHighlighAction("selectionManager.selectControl", "featurehighlighted"));
 
     if(DEBUG) {
-//        selectionManager.modifyControl.events.register("blur", this, function(){console.log("sm.mc.blur")});
-//        selectionManager.modifyControl.events.register("touchstart", this, function(){console.log("sm.mc.touchstart")});
+        selectionManager.registerModelEvents("selectionChanged", this, function(){console.log("sm.blur")});
+        selectionManager.events.register("touchstart", this, function(){console.log("sm.mc.touchstart")});
+        selectionManager.layers[0].events.register("beforefeatureselected", this, function(){console.log("sm.mc.beforefeatureselected")});
+        selectionManager.selectControl.events.register("featurehighlighted", this, function(e){console.log("sm.mc.featurehighlighted : ");});
 //        selectionManager.modifyControl.featureHover.control.events.register("activate", this, function(){console.log("sm.mc.fh.c.activate")});
 //        selectionManager.modifyControl.featureHover.control.events.register("mouseover", this, function(){console.log("sm.mc.fh.c.mouseover")});
 //        selectionManager.modifyControl.featureHover.register("over", this, function(){console.log("sm.mc.fh.-e.over")});

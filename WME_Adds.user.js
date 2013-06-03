@@ -41,26 +41,33 @@ var FRONT_ABBREVS = ["S", "N", "E", "W"]
 var END_ABBREVS = ["Ave", "Blvd", "Cir", "Ct", "Dr", "Hts", "Ln", "Loop", "Pkwy", "Pl", "Rd", "St", "Trl", "Way"]
 
 function SelectSection(hdr, iD, slctns) {
-this.header = hdr;
-this.id = iD;
-this.selections = slctns;
+    this.header = hdr;
+    this.id = iD;
+    this.selections = slctns;
 }
-
 
 function isTrafficRelevant(roadType) {
     switch(roadType) {
-    case 1: //"Streets",
-    case 2: //"Primary Street",
-    case 3: //"Freeways",
-    case 4: //"Ramps",
-    case 6: //"Major Highway",
-    case 7: //"Minor Highway",
-    case 21: //"Service Road"};
-        return true;
-    default:
-        return false;
+        //"Streets"
+        case 1:
+        //"Primary Street"
+        case 2:
+        //"Freeways",
+        case 3:
+        //"Ramps",
+        case 4:
+        //"Major Highway",
+        case 6:
+        //"Minor Highway",
+        case 7:
+        //"Service Road"
+        case 21:
+            return true;
+        default:
+            return false;
     }
 }
+
 function isOneWay(segment) {
     return ((segment.attributes.fwdDirection + segment.attributes.revDirection) == 1);
 }
@@ -76,55 +83,80 @@ function getSegmentSpeed(segment) {
         // take average?  we could do a max, or a min, or ...
         speedToUse = (segment.attributes.revCrossSpeed + segment.attributes.fwdCrossSpeed) / 2;
     }
-    if(!isNaN(speedToUse)) {
-        speedToUse *= 0.621;                        // convert from km/h to MPH
-        speedToUse = Math.ceil(speedToUse / 5) * 5; // round up to the nearest 5 mph
-        speedToUse = Math.round(speedToUse);        // may not be necessary
+    if (!isNaN(speedToUse)) {
+        speedToUse *= 0.621;
+        // convert from km/h to MPH
+        speedToUse = Math.ceil(speedToUse / 5) * 5;
+        // round up to the nearest 5 mph
+        speedToUse = Math.round(speedToUse);
+        // may not be necessary
     }
     return speedToUse;
 }
 
 // CLASS DEFINITIONS
 function LineBearing(dist, bear) {
-  this.distance = dist;
-  this.bearing = bear;
+    this.distance = dist;
+    this.bearing = bear;
 }
+
 function getDistance(p1, p2) {
+
     var y1 = p1.y;
     var x1 = p1.x;
 
     var y2 = p2.y;
     var x2 = p2.x;
 
-    var dLat = y2-y1;
-    var dLon = x2-x1;
-    d = Math.sqrt(Math.pow(dLat, 2) + Math.pow(dLon, 2));
+    var dLat = y2 - y1;
+    var dLon = x2 - x1;
+    var d = Math.sqrt(Math.pow(dLat, 2) + Math.pow(dLon, 2));
 
-    // http://mathforum.org/library/drmath/view/55417.html    
+    // http://mathforum.org/library/drmath/view/55417.html
     var bearing = 0;
     if (dLon > 0) {
-        if(dLat > 0) { bearing = calcTan(dLon,dLat); }
-        if(dLat < 0) { bearing = 180 - calcTan(-1 * dLon, dLat); }
-        if(dLat == 0) { bearing = 90; }
+        if (dLat > 0) {
+            bearing = calcTan(dLon, dLat);
+        }
+        if (dLat < 0) {
+            bearing = 180 - calcTan(-1 * dLon, dLat);
+        }
+        if (dLat == 0) {
+            bearing = 90;
+        }
     }
-    if(dLon < 0 ) {
-        if(dLat > 0) { bearing = -1 * calcTan(-1 * dLon,dLat); }
-        if(dLat < 0) { bearing = calcTan(dLon, dLat)-180; }
-        if (dLat == 0) { bearing = 270; }
+    if (dLon < 0) {
+        if (dLat > 0) {
+            bearing = -1 * calcTan(-1 * dLon, dLat);
+        }
+        if (dLat < 0) {
+            bearing = calcTan(dLon, dLat) - 180;
+        }
+        if (dLat == 0) {
+            bearing = 270;
+        }
     }
-    if(dLon == 0) {
-        if(dLat > 0) { bearing = 0; }
-        if(dLat < 0) { bearing = 180; }
-        if(dLat == 0) { bearing = 0; }
+    if (dLon == 0) {
+        if (dLat > 0) {
+            bearing = 0;
+        }
+        if (dLat < 0) {
+            bearing = 180;
+        }
+        if (dLat == 0) {
+            bearing = 0;
+        }
     }
     bearing += 360;
-    bearing %= 360;
+    bearing = bearing % 360;
+
     return new LineBearing(d, bearing);
+
 }
 
 function getComponentsProperties(comps) {
-     var compSegs = [];
-    for(var i = 1; i < comps.length; i++) {
+    var compSegs = [];
+    for (var i = 1; i < comps.length; i++) {
         var p1 = compToPoint(comps[i - 1]);
         var p2 = compToPoint(comps[i]);
         var dist = getDistance(p1, p2);
@@ -134,8 +166,8 @@ function getComponentsProperties(comps) {
 }
 
 function Point(x, y) {
-  this.x = x;
-  this.y = y;
+    this.x = x;
+    this.y = y;
 }
 
 function compToPoint(comp) {
@@ -149,20 +181,19 @@ Point.prototype.getLineTo = function(p2) {
     var lat2 = p2.latitude;
     var lon2 = p2.longitude;
 
-    var dLat = lat2-lat1;
-    var dLon = lon2-lon1;
+    var dLat = lat2 - lat1;
+    var dLon = lon2 - lon1;
     var d = Math.sqrt(Math.pow(dLat, 2) + Math.pow(dLon, 2));
-    
+
     var bearing = 0;
     // North / South
-    if(dLon == 0) { 
+    if (dLon == 0) {
         bearing = dLat < 0 ? 180 : 0;
     } else {
-        bearing = (Math.tan(dLat/dLon) / (2 * Math.PI)) * 360;
+        bearing = (Math.tan(dLat / dLon) / (2 * Math.PI)) * 360;
     }
-//    return new LineBearing(d, bearing);
+    //    return new LineBearing(d, bearing);
 }
-
 function WazeLineSegment(segment, street) {
     this.cityID = street.cityID;
     var city = wazeModel.cities.get(this.cityID);
@@ -188,19 +219,17 @@ function WazeLineSegment(segment, street) {
 
 WazeLineSegment.prototype.getStreetName = function() {
 
-	if(!this.streetName) {
-		var sid = this.segment.attributes.primaryStreetID;
-		var street = wazeModel.streets.get(sid);
-		if(sid && street.name !== null) { 
-			this.streetName = street.name; 
-		}
-		else {
-			this.streetName = "";
-		}
-	} 
-	return this.streetName;
+    if (!this.streetName) {
+        var sid = this.segment.attributes.primaryStreetID;
+        var street = wazeModel.streets.get(sid);
+        if (sid && street.name !== null) {
+            this.streetName = street.name;
+        } else {
+            this.streetName = "";
+        }
+    }
+    return this.streetName;
 };
-
 
 function WazeNode(wazeNode, attachedSegments) {
 }
@@ -216,12 +245,14 @@ WMEFunction.prototype.getCheckboxId = function() {
 WMEFunction.prototype.getBackground = function() {
     return '#fff';
 };
+
 WMEFunction.prototype.build = function(checkValue) {
-	var checkStr = checkValue ? "checked" : "";
+    var checkStr = checkValue ? "checked" : "";
     return '<input style="" type="checkbox" id="' + this.getCheckboxId() + '" ' + checkStr + '/> ' + this.text;
 };
 WMEFunction.prototype.init = function() {
-    getId(this.getCheckboxId()).onclick = highlightSegments;
+    console.log("init");
+    getId(this.getCheckboxId()).onclick = highlightAllSegments;
 };
 WMEFunction.prototype.getModifiedAttrs = function(wazeLineSegment) {
     return new Object();
@@ -232,22 +263,61 @@ function WMEFunctionExtended(acheckboxId, aText) {
 }
 
 extend(WMEFunctionExtended.prototype, WMEFunction.prototype);
+
 WMEFunctionExtended.prototype.getSelectId = function() {
     return this.getCheckboxId() + 'Select';
 }
+
 WMEFunctionExtended.prototype.buildExtended = function() {
     return '';
 }
+
 WMEFunctionExtended.prototype.build = function(checkValue) {
     return WMEFunction.prototype.build.call(this, checkValue) + '<br />' + this.buildExtended();
 };
+
 WMEFunctionExtended.prototype.getSelectFieldChangeFunction = function() {
     var that = this;
     return function() {
         getId(that.getCheckboxId()).checked = "checked";
         highlightSegments();
-    };    
+    };
 };
+
+function EventPublisher() {
+    this.subscribers = [];
+}
+
+EventPublisher.prototype = {
+    subscribe : function(fn) {
+        this.subscribers.push(fn);
+    },
+    unsubscribe : function(fn) {
+    },
+    post : function(thisObj) {
+        for (var i = 0, j = this.subscribers.length; i < j; i++) {
+            this.subscribers[i].call(thisObj);
+        };
+    }
+};
+
+function HighlightSegmentMonitor() {
+    var eventPublisher = new EventPublisher();
+    var latestSegment = null;
+    this.subscribe = function(fn) {
+        eventPublisher.subscribe(fn);
+    }
+    this.updateLatestSegment = function(latest) {
+        latestSegment = latest;
+        eventPublisher.post(latest);
+    }
+    this.getLatestSegment = function() {
+        return latestSegment;
+    }
+}
+
+var highlightSegmentMonitor = new HighlightSegmentMonitor();
+
 //  
 // UTILITY DEFINITIONS FILE  
 //  
@@ -614,6 +684,22 @@ highlightNoName.getBackground = function() {
 };
 
 /*
+ * highlight ALTERNATE NAME
+ */
+var highlightWithAlternate = new WMEFunction("_cbHighlightWithAlternate", "With Alternate Name");
+highlightWithAlternate.getModifiedAttrs = function(wazeLineSegment) {
+    var modifications = new Object();
+    if (wazeLineSegment.attributes.streetIDs && wazeLineSegment.attributes.streetIDs.length > 0) {
+        modifications.color = "#FFFF00";
+        modifications.opacity = 0.7;
+    }
+    return modifications;
+};
+highlightWithAlternate.getBackground = function() {
+    return 'rgba(256,256,0,0.7)';
+};
+
+/*
  * highlight CONST ZN
  */
 var highlightConstZn = new WMEFunction("_cbHighlightConstZn", "CONST ZN Street");
@@ -630,18 +716,25 @@ highlightConstZn.getBackground = function() {
     return 'rgba(255,187,0,0.7)';
 };
 
+function getCurrentHoverSegment() {
+    return highlightSegmentMonitor.getLatestSegment();
+}
+
 /*
  * highlight SAME NAME
  */
 var highlightSameName = new WMEFunction("_cbHighlightSameName", "Same Street Name");
 highlightSameName.getModifiedAttrs = function(wazeLineSegment) {
     var modifications = new Object();
-    if (selectionManager.modifyControl.featureHover.feature && selectionManager.modifyControl.featureHover.feature.CLASS_NAME == 'Waze.Feature.Vector.Segment') {
-        var segment = selectionManager.modifyControl.featureHover.feature;
+    var segment = getCurrentHoverSegment();
+    if (segment != null) {
         var highlightedStreetID = segment.attributes.primaryStreetID;
         if (wazeLineSegment.attributes.primaryStreetID === highlightedStreetID) {
+            if (wazeLineSegment.segment.fid !== segment.fid) {
+                modifications.dasharray = "5 15";
+            }
             modifications.color = "#0ad";
-            modifications.opacity = 0.3;
+            modifications.opacity = 0.5;
         }
     }
     return modifications;
@@ -905,7 +998,7 @@ highlightNull.getModifiedAttrs = function(wazeLineSegment) {
 };
 
 var geometrySection = new SelectSection("Geometry", 'WME_geometry_section', [highlightExcessComponents, highlightLowAngles, highlightZigZagsComponents, highlightCloseComponents, highlightNoTerm, highlightShortSegments]);
-var highlightSection = new SelectSection("Highlight Segments", 'WME_Segments_section', [highlightOneWay, highlightNoDirection, highlightToll, highlightNoName, highlightCity, speedColor, highlightRoadType, highlightSameName, highlightConstZn]);
+var highlightSection = new SelectSection("Highlight Segments", 'WME_Segments_section', [highlightOneWay, highlightNoDirection, highlightToll, highlightNoName, highlightWithAlternate, highlightCity, speedColor, highlightRoadType, highlightSameName, highlightConstZn]);
 var advancedSection = new SelectSection("Advanced", 'WME_Advanced_section', [highlightEditor, highlightRecent, highlightLocked]);
 
 var selectSections = [highlightSection, geometrySection, advancedSection];
@@ -915,6 +1008,8 @@ var allModifiers = [];
 for (var i = 0; i < selectSections.length; i++) {
     allModifiers = allModifiers.concat(selectSections[i].selections);
 }
+
+var hoverDependentSections = [highlightSameName];
 // var allModifiers = [geometrySection.selections, highlightSection.selections, advancedSection.selections];
 //  
 // POPUP DIALOG  
@@ -925,10 +1020,9 @@ getId('editor-container').appendChild(WME_ADD_Popup);
 
 var InterstateRegEx = /^I-\d\d\d? /;
 
-function showPopup() {
-    if(selectionManager.modifyControl.featureHover.feature && 
-        selectionManager.modifyControl.featureHover.feature.CLASS_NAME == 'Waze.Feature.Vector.Segment') {
-        var segment = selectionManager.modifyControl.featureHover.feature;
+function showPopup(segment) {
+//	var segment = getCurrentHoverSegment();
+    if(segment != null) {
 //        var cmpnnts = segment.geometry.components;
 //        var compSegs = getComponentsProperties(cmpnnts);
         var popupClass = "";
@@ -947,9 +1041,12 @@ function showPopup() {
                 isFreeway = true;
                 break;
 			case 17: // Private Road
-			case 20: // Parking Lot Road
-				streetStyleClass = 'WME_ADD_parkingLotSign';
+				streetStyleClass = 'WME_ADD_privateStreet';
 				break;
+			case 20: // Parking Lot Road
+				streetStyleClass = 'WME_ADD_parkingLot';
+				break;
+			case 5:  //Walking Trails
 			case 10: //Pedestrian Bw
 				streetStyleClass = 'WME_ADD_trailSign';
                 break;
@@ -1037,7 +1134,7 @@ function showPopup() {
 // CORE FILE  
 //  
 
-var DEBUG = true;
+var DEBUG = false;
 
 var possibleWazeMapEvents = ["mouseout", "zoomend"];
 var possibleControllerEvents = ["loadend"];
@@ -1050,10 +1147,17 @@ var possibleActionEvents = [];
 
 var webStorageSupported = ('localStorage' in window) && window['localStorage'] !== null;
 
-function highlightSegments() {
-	modifySegements(highlightNull);
-	for (var i = 0; i < allModifiers.length; i++) {
-		var segModGroup = allModifiers[i];
+function highlightAllSegments() {
+    modifySegements(highlightNull);
+    highlightSegments(allModifiers);
+}
+
+function highlightSegments(modifiers) {
+    if(!modifiers) {
+        modifiers = allModifiers;
+    }
+	for (var i = 0; i < modifiers.length; i++) {
+		var segModGroup = modifiers[i];
 		var isChecked = getId(segModGroup.getCheckboxId()).checked
 		if (isChecked) {
 			modifySegements(segModGroup);
@@ -1318,8 +1422,18 @@ stylizer.innerHTML += "#WME_ADD_Popup #popup_container #popup_street_name #stree
 stylizer.innerHTML += "#WME_ADD_Popup #popup_container #popup_street_name #street_name_suffix {font-size: .65em;vertical-align:top;}"
 
 stylizer.innerHTML += "#WME_ADD_Popup #popup_container #popup_street_city {font-size:.8em;margin:1px 0 0 0;padding:0;line-height:1em;}"
-
-stylizer.innerHTML += "#WME_ADD_Popup .WME_ADD_parkingLotSign {background: #aaa; color:#000;font-style:italic;}"
+stylizer.innerHTML += "#WME_ADD_Popup .WME_ADD_parkingLot, #WME_ADD_Popup .WME_ADD_privateStreet {\
+background-color:#aaa;\
+color:#000;\
+font-style:italic;\
+}"
+stylizer.innerHTML += "#WME_ADD_Popup .WME_ADD_parkingLotSign {\
+height:21px;\
+padding-right:17px;\
+background-position:right center;\
+background-repeat:no-repeat;\
+background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAVCAYAAABR915hAAAACXBIWXMAAABPAAAATwFjiv3XAAACQElEQVR42sXWT2iUZxDH8c/srtu4zUGtVrBtpBaEokgNohR7CHjyYkvBkxXU2igpIoIgCB7EevQWxKiotILg0lLspdSqFy+CFMVDS0Gwaq0aSeK/YjTJ9LJqupBVE40Dz+Ed5nm/88wz83vf0OUe3vRs+xdXcRyd2Z5/GIMVXiC2gtn4GudjX6wZL/BwK0v7oiu+GC046kp9GWdGiG3Gx5g0bHe3Ju/nyrz/ouBS3fPpbM8VI2Z5MKZ55CcsAmmaBz7Hd6+01Lk6u7EK+dSpbVzuuNbNvcNcU8YFHPtjXh3s71cOjt3xniGH69rz7GjA9c21JLri1Aj9X1bSiqZh3n80qb4M8HRh+nMOYkobRzNKYxGQ+9LqbM/qaAWk/sT30N0g/pZwUujMtXl1LJJZDz7WSEBephW8Jntt4NIzm3dPzDXBtfwye+JQTPKgptNlF3JNXouuWJDr8mzsjVZFlwx62x1XNJvjLef8ZYKKluzI32N/vGvQfG843vDEUY2igqohm0C/DxVsVvSRAT/G9igLO2NPLMQ3PnBHWq+iRcEuvbaoaFHSEXtjqiFHhXke2tq41H2Woiq1RTXKtfkdlPprKh2oKDiMX7ItB/73x5IWK5pT+5gsEb7FAeGHxuAh67AUM/X5rPaCXsyQvs8N2Y9moQPLnyT3eDcbhJ21hHvxDlqlnwu4iRu1dftJmQ/EDNzSbqGJFkif4hF+028bPontUZL+zK/yVxzRYxnuKhpAn+suSp3SXZOdkGZhG3b8B9u3s4ceFzVrAAAAAElFTkSuQmCC');\
+}"
 stylizer.innerHTML += "#WME_ADD_Popup .WME_ADD_streetSign {background: #006F53; color:#fff;}"
 stylizer.innerHTML += "#WME_ADD_Popup .WME_ADD_trailSign {background: #8C6019; color:#000; font-weight:bold;}"
 stylizer.innerHTML += "#WME_ADD_Popup #popup_container #popup_street_name.WME_ADD_interstate {background-color: #006F53; background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAeCAIAAAC0Ujn1AAAABnRSTlMA/wD/AP83WBt9AAAACXBIWXMAAAsTAAALEwEAmpwYAAADPElEQVR42rXWzWsTWxjH8e+cTgiTVNvEoi5sqvW1paCiFBciWKluAiKC4E7c6EKqCK5c+A8IbisqKCJuFAQ3roW6sCAl+NJILDY1jZnO5MWazOT1uYvJrVdvq6jTHwNz5uE5Hw4zzMzRRAQALMvqSCQYGiIQADRN8+rthnqdyUmUYv9+dH2ZhlpN3r5l9+5oNOrVde9ULpfDjx8b588TCjEwQG8vPT2EQjgOts3cHG/eUKkAhMMMDbFpE9EohkGlgmUxO8v0NI7z9e5d59QpwzAA5dFOLmdcuwawdy8bNpBO8/o1a9YwPc3Wreg6Y2Ps2MHZs+zZw65dGAavXvHoEZEIlQoHD3LkCNB59WrZND1TAYVCIXL7NrkcwPAwx49z8SKpFJUKPT0kk+g6tRojIwwOYll8+EAySTzO6CjFIhMT9PczMQGQyXTdv18qldp0q1zuuHWLpSSTbNny7bJYBNi8mRcvuHePkyfb9b4+Bgf594ZSq3nDwM2bDccBdMdxjGfPsKx2UyIBMDWF65JIYNscPcrLl4yPE4mwbx+Tk3z+TKvFgwd0dFCp0GhQLDIywtOnAJ8+BZ4/r584odm2/WWq6M7M419CA7HOgU4WFux16wT8PPr6xLZtlU5rto2/SafJ5zU1M4PvEeHdO1f5vmQvi4sB1WwGV8UmpAKB2mrAuu6qaFRWg167tqr6+/2nNY2dO4MqFmP9ep/p7dvp6kJpmvfN8jMeqILBYDzu+ksfO/Y1HA4jItmstXGjb295LCa5nCUiCggG1diYbw/z8uVmMKi3/2wiMju70Nvrw5K3bZNMZsEz23SpVHr4sPqXrqbJkyfO4uLid7SImKZ57txf0VeuiGmaS+A3utlsZrPW6OgfuvG4ZLMLrVZrGVpEXNf9+LFw6NBvu4cPy9xcoVar/Vf7jvb0TMY+ffo33DNnZH7edl33B+pHWkTq9XouZ46PN7u7f4FGo3LnTsM0zUaj8X9nGdqLbdup1JcLF8QwlkFDIbl0SVKpQj6fX0lYkRaRarVqWVYyWbh+XYaHRSlRSg4ckBs35P37vGVZ9Xr9J9O1pe3kSmk2m95uyLY1pYhEBOju7lZK/XziPwFBIyW1EjjMAAAAAElFTkSuQmCC'); background-repeat: no-repeat; background-position: center center; color:#fff;font-size:.92em;font-weight:bold;min-height:30px;vertical-align: 2px; line-height: 30px;margin: 0 auto;width: 100%}"
@@ -1403,7 +1517,7 @@ if (loginManager != null) {
 }
 
 // setup onclick handlers for instant update:
-getId('_cbRefreshButton').onclick = highlightSegments;
+getId('_cbRefreshButton').onclick = highlightAllSegments;
 enumerateAllModifiers(function(seg) {
     seg.init();
 });
@@ -1413,8 +1527,8 @@ enumerateAllModifiers(function(seg) {
 function createWazeMapEventAction(actionName) {
     return function() {
         setTimeout(function() {
-            highlightSegments();
-                    showPopup();
+            highlightAllSegments();
+//                    showPopup();
 
         }, 50);
         return true;
@@ -1434,10 +1548,19 @@ function analyzeNodes() {
 
 function createEventAction(eventHolderName, actionName) {
     return function() {
-        highlightSegments();
+        highlightAllSegments();
         populateUserList();
         populateCityList();
-        showPopup();
+//        showPopup();
+        return true;
+    };
+}
+
+function createHighlighAction(eventHolderName, actionName) {
+    return function(e) {
+        highlightSegmentMonitor.updateLatestSegment(e.feature);
+        showPopup(e.feature);
+        highlightSegments(hoverDependentSections);
         return true;
     };
 }
@@ -1464,7 +1587,7 @@ window.addEventListener("load", function(e) {
     }
     for (var i = 0; i < possibleSelectionModifyEvents.length; i++) {
         var eventName = possibleSelectionModifyEvents[i];
-        selectionManager.modifyControl.events.register(eventName, this, createEventAction("selectionManager.modifyControl", eventName));
+//        selectionManager.modifyControl.events.register(eventName, this, createEventAction("selectionManager.modifyControl", eventName));
     }
     for (var i = 0; i < possibleSelectionEvents.length; i++) {
         var eventName = possibleSelectionEvents[i];
@@ -1472,16 +1595,19 @@ window.addEventListener("load", function(e) {
     }
     for (var i = 0; i < possibleSelectionModifyHoverEvents.length; i++) {
         var eventName = possibleSelectionModifyHoverEvents[i];
-        selectionManager.modifyControl.featureHover.control.events.register(eventName, this, createEventAction("selectionManager.modifyControl.featureHover.control", eventName));
+  //      selectionManager.modifyControl.featureHover.control.events.register(eventName, this, createEventAction("selectionManager.modifyControl.featureHover.control", eventName));
     }
 	for (var i = 0; i < possibleActionEvents.length; i++) {
 		var eventName = possibleActionEvents[i];
 		wazeModel.actionManager.events.register(eventName, this, createEventAction("wazeModel.actionManager", eventName));
 	}
+	selectionManager.selectControl.events.register("featurehighlighted", this, createHighlighAction("selectionManager.selectControl", "featurehighlighted"));
 
     if(DEBUG) {
-//        selectionManager.modifyControl.events.register("blur", this, function(){console.log("sm.mc.blur")});
-//        selectionManager.modifyControl.events.register("touchstart", this, function(){console.log("sm.mc.touchstart")});
+        selectionManager.registerModelEvents("selectionChanged", this, function(){console.log("sm.blur")});
+        selectionManager.events.register("touchstart", this, function(){console.log("sm.mc.touchstart")});
+        selectionManager.layers[0].events.register("beforefeatureselected", this, function(){console.log("sm.mc.beforefeatureselected")});
+        selectionManager.selectControl.events.register("featurehighlighted", this, function(e){console.log("sm.mc.featurehighlighted : ");});
 //        selectionManager.modifyControl.featureHover.control.events.register("activate", this, function(){console.log("sm.mc.fh.c.activate")});
 //        selectionManager.modifyControl.featureHover.control.events.register("mouseover", this, function(){console.log("sm.mc.fh.c.mouseover")});
 //        selectionManager.modifyControl.featureHover.register("over", this, function(){console.log("sm.mc.fh.-e.over")});
